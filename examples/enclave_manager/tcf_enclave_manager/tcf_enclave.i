@@ -89,7 +89,6 @@ namespace std {
 %include "signup_info.h"
 %include "enclave_info.h"
 %include "work_order_wrap.h"
-%include "db_store.h"
 %include "tcf_enclave.h"
 %nothread;
 

@@ -141,10 +141,9 @@ INCLUDE_DIRECTORIES(/opt/intel/sgxsdk/include /opt/intel/sgxssl/include)
 INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common)
 INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common/crypto)
 INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common/verify_ias_report)
-INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common/packages/db_store)
 INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common/packages/base64)
 INCLUDE_DIRECTORIES(${TCF_CORE_DIR}/common/packages/parson)
-INCLUDE_DIRECTORIES(${TCF_TOP_DIR}/common/sgx_workload)
+INCLUDE_DIRECTORIES(${TCF_TOP_DIR}/common/sgx/workload)
 LINK_DIRECTORIES()
 
 SGX_EDGE_TRUSTED(${PROJECT_EDL} PROJECT_EDGE_SOURCES)
@@ -198,11 +197,12 @@ SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,$ENV{SGX_SDK}
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,$ENV{SGX_SSL}/lib64")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,$ENV{SGX_SSL}/lib64/release")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_CORE_DIR}/common/build")
-SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/common/sgx_workload/build")
-SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/common/sgx_iohandler/build")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/common/sgx/build/workload")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/common/sgx/build/iohandler")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/examples/apps/build/echo/workload")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/examples/apps/build/heart_disease_eval/workload")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/examples/apps/build/inside_out_demo/workload")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,${TCF_TOP_DIR}/examples/apps/build/simple_wallet/workload")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-L,$ENV{SGX_SSL}/lib64")
 # Remove all the default windows libraries (kernel32, etc)
 SET(CMAKE_C_STANDARD_LIBRARIES_INIT "")
@@ -225,7 +225,7 @@ SGX_SIGN_ENCLAVE(${PROJECT_NAME} ${TCF_ENCLAVE_CODE_SIGN_PEM} ${PROJECT_CONFIG})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lsgx_tsgxssl -Wl,--no-whole-archive)
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -l${TRTS_LIBRARY_NAME} -Wl,--no-whole-archive)
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lsgx_workload -lsgx_iohandler -Wl,--no-whole-archive)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lcommon_sgx_workload -lcommon_sgx_iohandler -Wl,--no-whole-archive)
 
 # Add echo workload
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lecho_wo -Wl,--no-whole-archive)
@@ -233,11 +233,13 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lecho_wo -Wl,--no-who
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lheart_disease_eval -Wl,--no-whole-archive)
 # Add example inside out workload
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -linside_out_eval -Wl,--no-whole-archive)
+# Add simple wallet workload
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--whole-archive -lsimple_wallet -Wl,--no-whole-archive)
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} -Wl,--start-group  -lttcf-common -lsgx_tsgxssl_crypto -lsgx_tstdc -lsgx_tcxx -lsgx_tcrypto  -l${SERVICE_LIBRARY_NAME} -Wl,--end-group)
 
 TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${SGX_ENCLAVE_INCLUDE} ${SGX_INCLUDE})
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PRIVATE ${TCF_CORE_DIR}/common/packages/db_store ${TCF_TOP_DIR}/examples/apps)
+TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PRIVATE ${TCF_TOP_DIR}/examples/apps)
 
 ADD_CUSTOM_COMMAND(
     TARGET ${PROJECT_NAME}
