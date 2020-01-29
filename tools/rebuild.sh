@@ -173,3 +173,21 @@ yell --------------- ENCLAVE MANAGER ---------------
 cd $TCF_HOME/examples/enclave_manager
 try make "-j$NUM_CORES"
 try make install
+
+yell --------------- CLIENT SDK ---------------
+cd $TCF_HOME/client_sdk
+try python3 setup.py bdist_wheel
+try pip3 install dist/*.whl
+
+yell --------------- LMDB LISTENER ---------------
+cd $TCF_HOME/examples/shared_kv_storage/db_store/packages
+mkdir -p build
+cd build
+try cmake ..
+try make
+
+yell --------------- SHARED KV STORAGE ---------------
+cd $TCF_HOME/examples/shared_kv_storage
+try make
+try make install
+
