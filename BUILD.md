@@ -54,7 +54,7 @@ Follow the instructions below to execute a Docker-based build and execution.
 4. Open a Docker container shell using following command
    `sudo docker exec -it tcf bash`
 5. To execute test cases refer to [Testing](#testing) section below
-6. To exit the TCF program, press `Ctrl-c`
+6. To exit the Avalon program, press `Ctrl-c`
 
 
 # <a name="standalonebuild"></a>Standalone Build
@@ -70,13 +70,25 @@ The steps below will set up a Python virtual environment to run Avalon.
 1. Make sure environment variables are set as described in the
    [PREREQUISITES document](PREREQUISITES.md)
 
-2. Download the Avalon source repository if you have not already done this:
+2. Choose whether you want the stable version (recommended) or the most recent
+   version
+
+   - To use the current stable branch (recommended), run this command:
+     ```bash
+     git clone https://github.com/hyperledger/avalon --branch v0.5-pre-release.1
+     ```
+
+   - Or, to use the latest branch, run this command:
+     ```bash
+     git clone https://github.com/hyperledger/avalon 
+     ```
+
+3. Change to the avalon soure directory
    ```bash
-   git clone https://github.com/hyperledger/avalon 
    cd avalon
    ```
 
-3. Set `TCF_HOME` to the top level directory of your
+4. Set `TCF_HOME` to the top level directory of your
    `avalon` source repository.
    You will need these environment variables set in every shell session
    where you interact with Avalon.
@@ -87,7 +99,7 @@ The steps below will set up a Python virtual environment to run Avalon.
    echo "export TCF_HOME=$TCF_HOME" >> ~/.bashrc
    ```
 
-4. If you are using Intel SGX hardware, check that `SGX_MODE=HW` before
+5. If you are using Intel SGX hardware, check that `SGX_MODE=HW` before
    building the code.
    By default `SGX_MODE=SIM` indicating use the Intel SGX simulator.
    if you are not using Intel SGX hardware, go to the next step.
@@ -118,7 +130,7 @@ The steps below will set up a Python virtual environment to run Avalon.
    then leave this line commented out.
 
 
-5. Create a Python virtual environment, and build and install Avalon
+6. Create a Python virtual environment, and build and install Avalon
    components into it:
    ```bash
    cd $TCF_HOME/tools/build
@@ -128,7 +140,7 @@ The steps below will set up a Python virtual environment to run Avalon.
    make
    ```
 
-6. Build the Client SDK Python module:
+7. Build the Client SDK Python module:
 
    ```bash
    cd $TCF_HOME/client_sdk
@@ -136,7 +148,7 @@ The steps below will set up a Python virtual environment to run Avalon.
    pip3 install dist/*.whl
    ```
 
-7. Build the LMDB listener and shared key/value storage modules:
+8. Build the LMDB listener and shared key/value storage modules:
 
  
    ```bash
@@ -150,7 +162,7 @@ The steps below will set up a Python virtual environment to run Avalon.
    make install
    ```
 
-8. Activate the new Python virtual environment for the current shell session.
+9. Activate the new Python virtual environment for the current shell session.
    You will need to do this in each new shell session (in addition to
    exporting environment variables).
    ```bash
@@ -173,7 +185,8 @@ Follow these steps to run the `Demo.py` testcase:
    2. `cd $TCF_HOME/scripts`
    3. Run `source $TCF_HOME/tools/build/_dev/bin/activate` .
       You should see the `(_dev)` prompt
-   4. Run `./tcs_startup.sh`
+   4. Run `./tcs_startup.sh -s` The `-s` option starts 	`kv_storage` before
+      other Avalon components.
    5. Wait for the listener to start. You should see the message
       `TCS Listener started on port 1947`,
       followed by a repetitive message `Enclave manager sleeping for 10 secs`
@@ -217,7 +230,7 @@ See [examples/apps/heart_disease_eval](examples/apps/heart_disease_eval)
 - If the Demo test code breaks due to some error, please perform the following
   steps before re-running:
   1. `sudo rm $TCF_HOME/config/Kv*`
-  2. `$TCF_HOME/scripts/tcs_startup.sh -t`
+  2. `$TCF_HOME/scripts/tcs_startup.sh -t -s`
   3. You can re-run the test now
 
 - If you get build errors rerunning `make`, try `sudo make clean` first
