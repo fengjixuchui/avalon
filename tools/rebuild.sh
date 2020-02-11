@@ -190,8 +190,8 @@ cd $TCF_HOME/examples/enclave_manager
 try make "-j$NUM_CORES"
 try make install
 
-yell --------------- CLIENT SDK ---------------
-cd $TCF_HOME/client_sdk
+yell --------------- AVALON SDK ---------------
+cd $TCF_HOME/sdk
 try python3 setup.py bdist_wheel
 try pip3 install dist/*.whl
 
@@ -205,5 +205,10 @@ try make
 yell --------------- SHARED KV STORAGE ---------------
 cd $TCF_HOME/examples/shared_kv_storage
 try make
+try make install
+
+yell --------------- AVALON LISTENER ----------------
+cd $TCF_HOME/listener
+try make "-j$NUM_CORES"
 try make install
 
