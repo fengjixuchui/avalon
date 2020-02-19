@@ -13,8 +13,7 @@ For command line options, type `./echo_client.py -h` from the
 To use:
 
 1.  If needed, update the Ethereum account and direct registry contract
-    information in `docker/Dockerfile.tcf-dev` and
-    `examples/common/python/connectors/tcf_connector.toml`
+    information in `sdk/avalon_sdk/tcf_connector.toml`
 2.  Follow instructions in the "Docker-based Build and Execution" section of
     the [build document](../../../BUILD.md#dockerbuild) through step 5
     (activating a virtual environment)
@@ -22,8 +21,7 @@ To use:
     `docker-compose` . Terminal 2 is running the Docker container shell
 4.  In Terminal 2 run `cd $TCF_HOME/examples/apps/echo/client`
 5.  In Terminal 2, run `./echo_client.py -m "Hello world"` .
-    Use the `-h` option to see other available options
-
+    Use the `-h` option to see other available options.
 6.  You will see output showing the following:
     1. The client searches the registry for an "echo" worker
     2. The client sends a request to the worker
