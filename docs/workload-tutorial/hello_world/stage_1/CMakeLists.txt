@@ -14,9 +14,6 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.2 FATAL_ERROR)
 
-# Common components for both trusted and untrusted common libraries
-################################################################################
-
 FILE(GLOB PROJECT_HEADERS "*.h")
 FILE(GLOB PROJECT_SOURCES "*.cpp")
 
