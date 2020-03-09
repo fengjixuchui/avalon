@@ -62,8 +62,8 @@ class EthereumWrapper():
             # Amount of Ether you’re willing to pay for every unit of gas
             self.__gas_price = config["ethereum"]["gas_price"]
             set_solc_version(config['ethereum']['solc_version'])
-            logging.info("Solidity compiler version being used : {}"
-                         .format(get_solc_version()))
+            logging.debug("Solidity compiler version being used : {}"
+                          .format(get_solc_version()))
         else:
             raise Exception("Invalid configuration parameter")
 
@@ -158,7 +158,7 @@ class EthereumWrapper():
         tx_hash = self.__w3.eth.sendRawTransaction(signed_tx.rawTransaction)
         tx_receipt = self.__w3.eth.waitForTransactionReceipt(
             tx_hash.hex(), 120)
-        logging.info("executed transaction hash: %s, receipt: %s",
+        logging.debug("Executed transaction hash: %s, receipt: %s",
                      format(tx_hash.hex()), format(tx_receipt))
         return tx_receipt
 
@@ -170,7 +170,7 @@ class EthereumWrapper():
         """
         tx_hash = self.__w3.eth.sendTransaction(tx_dict)
         tx_receipt = self.__w3.eth.waitForTransactionReceipt(tx_hash)
-        logging.info("executed transaction hash: %s, receipt: %s",
+        logging.debug("Executed transaction hash: %s, receipt: %s",
                      format(tx_hash.hex()), format(tx_receipt))
         return tx_receipt
 
