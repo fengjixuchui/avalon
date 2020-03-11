@@ -25,7 +25,7 @@ import asyncio
 
 import config.config as pconfig
 import utility.logger as plogger
-import crypto_utils.crypto_utility as crypto_utility
+import avalon_crypto_utils.crypto_utility as crypto_utility
 from avalon_sdk.worker.worker_details import WorkerType, WorkerStatus
 import avalon_sdk.worker.worker_details as worker_details
 from avalon_sdk.work_order.work_order_params import WorkOrderParams
@@ -38,7 +38,7 @@ from avalon_sdk.direct.jrpc.jrpc_work_order import \
 from avalon_sdk.direct.jrpc.jrpc_work_order_receipt \
     import JRPCWorkOrderReceiptImpl
 from error_code.error_status import WorkOrderStatus, ReceiptCreateStatus
-import crypto_utils.signature as signature
+import avalon_crypto_utils.signature as signature
 from error_code.error_status import SignatureStatus
 from avalon_sdk.work_order_receipt.work_order_receipt \
     import WorkOrderReceiptRequest
@@ -421,7 +421,6 @@ def _get_first_active_worker(worker_registry, worker_id):
                         worker_retrieve_result = worker
                         worker_id = w_id
                         break
-                logger.error("No active worker found")
             else:
                 logger.error("No workers found")
         else:

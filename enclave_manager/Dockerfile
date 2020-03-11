@@ -139,9 +139,11 @@ COPY --from=openssl_image /tmp/openssl-$OPENSSL_VER.tar.gz /tmp/
 
 WORKDIR /tmp
 
+# Using specific SGX SSL tag "lin_2.5_1.1.1d" corresponding to
+# openSSL version 1.1.1d
 RUN ldconfig \
  && ln -s /etc/ssl/certs/* /usr/local/ssl/certs/ \
- && git clone https://github.com/intel/intel-sgx-ssl.git  \
+ && git clone -b lin_2.5_1.1.1d https://github.com/intel/intel-sgx-ssl.git  \
  && . /opt/intel/sgxsdk/environment \
  && (cd intel-sgx-ssl/openssl_source; mv /tmp/openssl-$OPENSSL_VER.tar.gz . ) \
  && (cd intel-sgx-ssl/Linux; \
@@ -220,6 +222,10 @@ WORKDIR /project/avalon/common/python
 
 RUN make
 
+WORKDIR /project/avalon/common/crypto_utils
+
+RUN make
+
 WORKDIR /project/avalon/sdk
 
 RUN make
@@ -248,6 +254,7 @@ COPY --from=build_image /opt/intel/sgxssl/lib64/ /opt/intel/sgxssl/lib64
 
 # Copy Python build artifacts
 COPY --from=build_image /project/avalon/common/python/dist/*.whl dist/
+COPY --from=build_image /project/avalon/common/crypto_utils/dist/*.whl dist/
 COPY --from=build_image /project/avalon/sdk/dist/*.whl dist/
 COPY --from=build_image /project/avalon/enclave_manager/dist/*.whl dist/
 
