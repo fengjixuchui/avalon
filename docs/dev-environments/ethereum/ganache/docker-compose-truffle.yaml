@@ -1,6 +1,4 @@
-#! /bin/bash
-
-# Copyright 2019 Intel Corporation
+# Copyright 2020 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ClientDir=/project/avalon/examples/apps/generic_client
+version: '3.5'
 
-python3 ${ClientDir}/generic_client.py --uri "http://avalon-listener:${1:-1947}" \
- --workload_id "heart-disease-eval" \
- --in_data "Data: 25 10 1 67  102 125 1 95 5 10 1 11 36 1" -o
-    
+services:
+    truffle-envt-ganache:
+      image: truffle-envt:latest
+      build:
+        context: $TCF_HOME
+        dockerfile: ./docs/dev-environments/ethereum/Dockerfile
+      container_name: truffle-envt-ganache-setup
+      command: "bash -c \"\
+          truffle migrate --network avalon_ganache_docker
+          \""
+
+networks:
+  default:
+    external:
+      name: ganache_local_net

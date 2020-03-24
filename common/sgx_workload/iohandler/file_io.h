@@ -13,6 +13,14 @@
 * limitations under the License.
 */
 
+/**
+ * @file
+ * FileIoExecutor C++ class definitions for Avalon Inside-Out File I/O.
+ * To use, #include "file_io.h"
+ */
+
+#pragma once
+
 #include <string>
 #include <stdint.h>
 
