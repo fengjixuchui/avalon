@@ -307,7 +307,7 @@ These steps detail installing OpenSSL to the `~/openssl/install` directory.
 ```bash
 mkdir -p ~/openssl/install
 cd ~/openssl
-wget https://www.openssl.org/source/openssl-1.1.1d.tar.gz
+wget https://www.openssl.org/source/old/1.1.1/openssl-1.1.1d.tar.gz
 tar -xzf openssl-1.1.1d.tar.gz
 cd openssl-1.1.1d/
 ./Configure --prefix=$PWD/../install
@@ -357,8 +357,9 @@ problems.
   cd ~/sgxssl
   ```
 
-- Download specific version of SGX SSL git repository. 
-  Using SGX SSL tag "lin_2.5_1.1.1d" corresponding to openSSL version 1.1.1d
+- Download a specific version of the Intel SGX SSL git repository. 
+  Use Intel SGX SSL tag "lin_2.5_1.1.1d", which corresponds to
+  OpenSSL version 1.1.1d
 
   ```bash
   git clone -b lin_2.5_1.1.1d 'https://github.com/intel/intel-sgx-ssl.git'

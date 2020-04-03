@@ -303,7 +303,7 @@ enclaves:
 https://software.intel.com/en-us/blogs/2016/06/06/overview-of-intel-software-guard-extension-enclave
 
 How can I create a TEE with Intel SGX using Avalon?
-----------------------------------------------------------------------------------
+---------------------------------------------------
 Start with the examples and tutorial at https://github.com/hyperledger/avalon/tree/master/docs#tutorial
 The technical details of Intel SGX enclaves are encapsulated in the
 Avalon libraries and Avalon Enclave Manager.
@@ -316,7 +316,7 @@ Intel SGX needs to be enabled in BIOS.
 
 Is there a maximum size of input data when using Intel SGX?
 -----------------------------------------------------------
-Avalon does not expect application-specific code to use SGX sealed data.
+Avalon does not expect application-specific code to use Intel SGX sealed data.
 Avalon uses sealed data internally for storing private enclave signing and
 encryption keys.
 As result application specific data size is not dependent on the sealed data
@@ -355,6 +355,10 @@ Application type ID
     Identifier for a type of Avalon application. An Avalon worker supports
     one or more application types
 
+Attestation
+    Proof that something (such as code or data) was checked for validity
+    (such as with signature validation)
+
 Attested oracle
     A device that uses Trusted Compute to attest some data
     (e.g. environmental characteristics, financial values, inventory levels)
@@ -385,6 +389,10 @@ Client
     meaning as used in client-server architecture.
     To avoid ambiguity, an Avalon client is properly referred to as a
     requester
+
+Confidential computing
+    Protection of data in use by performing computation within
+    hardware-based trusted execution environments (TEEs)
 
 DCAP
     Intel SGX Data Center Attestation Primitives. Allows an enterprise
@@ -605,11 +613,6 @@ Tag
 Truffle
     A popular Ethereum development environment
 
-
-Trusted compute service (TCS)
-    A service that provides trusted compute
-    functionality. Hyperledger Avalon is an example of a TCS
-
 Trusted compute (TC)
     Trusted computational resource for work order
     execution. It preserves data confidentiality, execution integrity and
@@ -619,6 +622,14 @@ Trusted compute (TC)
     software-based cryptographic security guarantees, a service's reputation,
     virtualization, or a hardware-based Trusted Execution Environment such
     as Intel's SGX
+
+Trusted compute base (TCB)
+    The hardware, firmware, and software resources used by trusted compute
+
+Trusted compute service (TCS)
+    A service that provides trusted compute
+    functionality. Hyperledger Avalon is an example of a TCS
+
 
 Trusted execution environment (TEE)
     Hardware-based technology that executes only validated tasks,

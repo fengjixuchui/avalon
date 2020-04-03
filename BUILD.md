@@ -42,8 +42,8 @@ Follow the instructions below to execute a Docker-based build and execution.
 
    **SGX Hardware mode (for hosts with Intel SGX)**:
    1. Refer to Intel SGX in Hardware-mode section in
-      [PREREQUISITES document](PREREQUISITES.md) to install SGX pre-requisites
-      and to configure IAS keys.
+      [PREREQUISITES document](PREREQUISITES.md) to install Intel SGX
+      pre-requisites and to configure IAS keys.
    2. Run `sudo docker-compose -f docker-compose-sgx.yaml up --build`
    3. For subsequent runs on the same workspace, if you changed a
       source or configuration file, run the above command again
@@ -76,7 +76,7 @@ The steps below will set up a Python virtual environment to run Avalon.
 
    - To use the current stable branch (recommended), run this command:
      ```bash
-     git clone https://github.com/hyperledger/avalon --branch v0.5-pre-release.1
+     git clone https://github.com/hyperledger/avalon --branch v0.5-pre-release.4
      ```
 
    - Or, to use the latest branch, run this command:
