@@ -59,7 +59,7 @@ class EnclaveManager:
         # Need to come up with a scheme to generate both for every unique
         # encryption key.
         self.encryption_key_nonce = ""
-        self.encryption_key_signature = ""
+        self.encryption_key_signature = signup_data.encryption_key_signature
         self.enclave_id = signup_data.enclave_id
         self.extended_measurements = measurements
 
@@ -262,7 +262,7 @@ class EnclaveManager:
         Parameters:
             - kv_helper is lmdb instance to access database
             - wo_id is work order id of request for which receipt is to be
-              created.
+              updated.
             - wo_json_resp is json rpc response of the work order execution.
             status of the work order receipt and updater signature update in
             the receipt.
