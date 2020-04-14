@@ -5,6 +5,7 @@ https://creativecommons.org/licenses/by/4.0/
 
 # Avalon Worker Application Development Tutorial
 
+- [Directory Structure](#directory)
 - [Prerequisites](#prerequisites)
 - [Phase 1: Avalon Plug-in Code](#phase1)
 - [Phase 2: Worker-specific Code](#phase2)
@@ -17,6 +18,13 @@ Then we show how to modify the files to create a workload application.
 
 The example we create will be a workload application that takes a name as
 input and echos back "Hello *name*".
+
+[![Hyperledger Avalon Application Development video
+](../../images/screenshot-hyperledger-avalon-application-development.jpg)
+<br />*Video presentation (39:56)*](https://youtu.be/yKDFJH9J3IU)
+
+
+## <a name="directory"></a>Directory Structure
 
 Under directory `hello_world/` are the desired results of modifying the
 template files, `hello_world/stage_1` and, with further modifications,
