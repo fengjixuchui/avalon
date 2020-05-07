@@ -1,6 +1,4 @@
-#! /bin/bash
-
-# Copyright 2019 Intel Corporation
+# Copyright 2020 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-enclave_manager="${TCF_HOME}/examples/enclave_manager/tcf_enclave_manager/enclave_manager.py"
-
-echo "starting enclave manager ..."
-python3 $enclave_manager --lmdb_url http://avalon-lmdb:9090
+all = [
+    'tcs_enclave_manager'
+]

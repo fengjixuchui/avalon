@@ -3,9 +3,16 @@
 //  Version: 1.01.00
 //
 
+/**
+ * @file
+ * Base64 encode and decode functions.
+ * Used to encode/decode between binary data into a printable character format.
+ */
+
 /*
-    The original source code has been modified to be used with Trusted Compute Framework (TCFs).
-*/
+ * The original source code has been modified to be used with
+ * Hyperledger Avalon.
+ */
 
 #pragma once
 

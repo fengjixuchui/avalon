@@ -94,8 +94,8 @@ def parse_command_line(config, args):
 def main(args=None):
 
     # parse out the configuration file first
-    conf_file = ['tcs_config.toml']
-    conf_path = [get_config_dir('config/')]
+    conf_file = ['kme_config.toml']
+    conf_path = [get_config_dir('config')]
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', help='configuration file', nargs='+')

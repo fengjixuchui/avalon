@@ -18,6 +18,8 @@ enclave {
     from "sgx_tsgxssl.edl" import *;
     from "base.edl" import *;
     from "signup.edl" import *;
+    from "signup_kme.edl" import *;
+    from "signup_wpe.edl" import *;
     from "workload.edl" import *;
     from "iohandler.edl" import *;
 };
