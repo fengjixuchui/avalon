@@ -21,23 +21,11 @@
 #include <string>
 #include <stdlib.h>
 
-namespace tcf {
-    namespace enclave_api {
-        namespace workorder {
-            // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-            tcf_err_t HandleWorkOrderRequest(
-                const Base64EncodedString& inSerializedRequest,
-                uint32_t& outResponseIdentifier,
-                size_t& outSerializedResponseSize,
-                int enclaveIndex);
-
-            // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-            tcf_err_t GetSerializedResponse(
-                const uint32_t inResponseIdentifier,
-                const size_t inSerializedResponseSize,
-                Base64EncodedString& outSerializedResponse,
-                int enclaveIndex);
-
-        }  /* namespace workorder */
-    }  /* namespace enclave_api */
-}  /* namespace tcf */
+class WorkOrderHandlerBase {
+public:
+    static tcf_err_t GetSerializedResponse(
+        const uint32_t inResponseIdentifier,
+        const size_t inSerializedResponseSize,
+        Base64EncodedString& outSerializedResponse,
+        int enclaveIndex);
+};

@@ -12,35 +12,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "pkenc_public_key.h"
+
+/**
+ * @file
+ * Avalon RSA public key generation, serialization, and encryption functions.
+ */
+
 #include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
-#include "base64.h"  //simple base64 enc/dec routines
+#include <memory>    // std::unique_ptr
+
 #include "crypto_shared.h"
 #include "error.h"
 #include "hex_string.h"
 #include "pkenc.h"
 #include "pkenc_private_key.h"
 #include "pkenc_public_key.h"
-
-/***Conditional compile untrusted/trusted***/
-#if _UNTRUSTED_
-#include <openssl/crypto.h>
-#include <stdio.h>
-#else
-#include "tSgxSSL_api.h"
-#endif
-/***END Conditional compile untrusted/trusted***/
-
-/**
- * @file
- * Avalon RSA public key generation, serialization, and encryption functions.
- */
 
 namespace pcrypto = tcf::crypto;
 namespace constants = tcf::crypto::constants;
@@ -60,6 +47,8 @@ namespace Error = tcf::error;
 /**
  * Utility function: deserialize RSA Public Key.
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded Serialized RSA public key to deserialize
  */
 RSA* deserializeRSAPublicKey(const std::string& encoded) {
     BIO_ptr bio(BIO_new_mem_buf(encoded.c_str(), -1), BIO_free_all);
@@ -69,7 +58,8 @@ RSA* deserializeRSAPublicKey(const std::string& encoded) {
         throw Error::RuntimeError(msg);
     }
 
-    RSA* public_key = PEM_read_bio_RSAPublicKey(bio.get(), NULL, NULL, NULL);
+    RSA* public_key = PEM_read_bio_RSAPublicKey(bio.get(),
+        nullptr, nullptr, nullptr);
     if (!public_key) {
         std::string msg(
             "Crypto Error (deserializeRSAPublicKey): Could not "
@@ -90,6 +80,7 @@ pcrypto::pkenc::PublicKey::PublicKey() {
 
 /**
  * PublicKey constructor from PrivateKey.
+ * Extracts the public key portion from a RSA key pair.
  */
 pcrypto::pkenc::PublicKey::PublicKey(
         const pcrypto::pkenc::PrivateKey& privateKey) {
@@ -104,7 +95,10 @@ pcrypto::pkenc::PublicKey::PublicKey(
 
 /**
  * Constructor from encoded string.
+ * Implemented with deserializeRSAPublicKey().
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded serialized RSA public key
  */
 pcrypto::pkenc::PublicKey::PublicKey(const std::string& encoded) {
     public_key_ = deserializeRSAPublicKey(encoded);
@@ -172,7 +166,10 @@ pcrypto::pkenc::PublicKey& pcrypto::pkenc::PublicKey::operator=(
 
 /**
  * Deserialize Public Key.
+ * Implemented with deserializeRSAPublicKey().
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded Serialized RSA public key to deserialize
  */
 void pcrypto::pkenc::PublicKey::Deserialize(const std::string& encoded) {
     RSA* key = deserializeRSAPublicKey(encoded);
@@ -183,7 +180,7 @@ void pcrypto::pkenc::PublicKey::Deserialize(const std::string& encoded) {
 
 
 /**
- * Serialize Public Key.
+ * Serialize a RSA public key.
  * Throws RuntimeError.
  */
 std::string pcrypto::pkenc::PublicKey::Serialize() const {
@@ -222,6 +219,7 @@ std::string pcrypto::pkenc::PublicKey::Serialize() const {
 
 /**
  * Encrypt message with RSA public key and return ciphertext.
+ * Uses PKCS1 OAEP padding.
  * Throws RuntimeError.
  *
  * @param message ByteArray containing raw binary plaintext

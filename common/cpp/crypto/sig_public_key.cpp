@@ -16,33 +16,18 @@
 /**
  * @file
  * Avalon ECDSA signature public key serialization and verification functions.
- * Used for Secp256k1.
+ * Used for Secp256k1 elliptical curves.
  */
 
-#include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
+#include <memory>    // std::unique_ptr
 
-#include "base64.h"  // simple base64 enc/dec routines
 #include "crypto_shared.h"
 #include "error.h"
 #include "hex_string.h"
 #include "sig.h"
 #include "sig_private_key.h"
 #include "sig_public_key.h"
-
-/***Conditional compile untrusted/trusted***/
-#if _UNTRUSTED_
-#include <openssl/crypto.h>
-#include <stdio.h>
-#else
-#include "tSgxSSL_api.h"
-#endif
-/***END Conditional compile untrusted/trusted***/
 
 namespace pcrypto = tcf::crypto;
 namespace constants = tcf::crypto::constants;
@@ -65,6 +50,9 @@ namespace Error = tcf::error;
 /**
  * Utility function: deserialize ECDSA Public Key.
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded Serialized ECDSA public key to deserialize
+ * @returns deserialized ECDSA public key
  */
 EC_KEY* deserializeECDSAPublicKey(const std::string& encoded) {
     BIO_ptr bio(BIO_new_mem_buf(encoded.c_str(), -1), BIO_free_all);
@@ -74,7 +62,8 @@ EC_KEY* deserializeECDSAPublicKey(const std::string& encoded) {
         throw Error::RuntimeError(msg);
     }
 
-    EC_KEY* public_key = PEM_read_bio_EC_PUBKEY(bio.get(), NULL, NULL, NULL);
+    EC_KEY* public_key = PEM_read_bio_EC_PUBKEY(bio.get(),
+        nullptr, nullptr, nullptr);
     if (!public_key) {
         std::string msg(
             "Crypto Error (deserializeECDSAPublicKey): Could not "
@@ -95,6 +84,9 @@ pcrypto::sig::PublicKey::PublicKey() {
 
 /**
  * Constructor from PrivateKey.
+ *
+ * @param privateKey encoded ECDSA private key string
+ *                   created by PrivateKey::Generate()
  */
 pcrypto::sig::PublicKey::PublicKey(const pcrypto::sig::PrivateKey& privateKey) {
     EC_KEY_ptr public_key(EC_KEY_new(), EC_KEY_free);
@@ -135,7 +127,7 @@ pcrypto::sig::PublicKey::PublicKey(const pcrypto::sig::PrivateKey& privateKey) {
 
     if (!EC_POINT_mul(ec_group.get(), p.get(),
             EC_KEY_get0_private_key(privateKey.private_key_),
-            NULL, NULL, context.get())) {
+            nullptr, nullptr, context.get())) {
         std::string msg(
             "Crypto Error (sig::PublicKey()): Could not compute EC_POINT_mul");
         throw Error::RuntimeError(msg);
@@ -160,6 +152,8 @@ pcrypto::sig::PublicKey::PublicKey(const pcrypto::sig::PrivateKey& privateKey) {
 /**
  * Constructor from encoded string.
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded serialized public key
  */
 pcrypto::sig::PublicKey::PublicKey(const std::string& encoded) {
     public_key_ = deserializeECDSAPublicKey(encoded);
@@ -169,6 +163,8 @@ pcrypto::sig::PublicKey::PublicKey(const std::string& encoded) {
 /**
  * Copy constructor.
  * Throws RuntimeError.
+ *
+ * @param publicKey Public key to copy
  */
 pcrypto::sig::PublicKey::PublicKey(const pcrypto::sig::PublicKey& publicKey) {
     public_key_ = EC_KEY_dup(publicKey.public_key_);
@@ -183,6 +179,8 @@ pcrypto::sig::PublicKey::PublicKey(const pcrypto::sig::PublicKey& publicKey) {
 /**
  * Move constructor.
  * Throws RuntimeError.
+ *
+ * @param publicKey Public key to move
  */
 pcrypto::sig::PublicKey::PublicKey(pcrypto::sig::PublicKey&& publicKey) {
     public_key_ = publicKey.public_key_;
@@ -207,6 +205,8 @@ pcrypto::sig::PublicKey::~PublicKey() {
 /**
  * Assignment operator = overload.
  * Throws RuntimeError.
+ *
+ * @param publicKey Public key to assign
  */
 pcrypto::sig::PublicKey& pcrypto::sig::PublicKey::operator=(
     const pcrypto::sig::PublicKey& publicKey) {
@@ -226,7 +226,10 @@ pcrypto::sig::PublicKey& pcrypto::sig::PublicKey::operator=(
 
 /**
  * Deserialize Digital Signature Public Key.
+ * Implemented with deserializeECDSAPublicKey().
  * Throws RunTime.
+ *
+ * @param encoded Serialized ECDSA public key to deserialize
  */
 void pcrypto::sig::PublicKey::Deserialize(const std::string& encoded) {
     EC_KEY* key = deserializeECDSAPublicKey(encoded);
@@ -239,6 +242,8 @@ void pcrypto::sig::PublicKey::Deserialize(const std::string& encoded) {
 /**
  * Deserialize EC point (X,Y) hex string.
  * Throws RuntimeError, ValueError.
+ *
+ * @param hexXY EC point (X,Y) represented as a hex string
  */
 void pcrypto::sig::PublicKey::DeserializeXYFromHex(const std::string& hexXY) {
     EC_KEY_ptr public_key(EC_KEY_new(), EC_KEY_free);
@@ -248,7 +253,7 @@ void pcrypto::sig::PublicKey::DeserializeXYFromHex(const std::string& hexXY) {
         throw Error::RuntimeError(msg);
     }
 
-    EC_GROUP_ptr ec_group(EC_GROUP_new_by_curve_name(constants::CURVE),
+    EC_GROUP_ptr ec_group(EC_GROUP_new_by_curve_name(NID_secp256k1),
          EC_GROUP_clear_free);
     if (!ec_group) {
         std::string msg("Crypto Error (sig::DeserializeXYFromHex): "
@@ -264,7 +269,7 @@ void pcrypto::sig::PublicKey::DeserializeXYFromHex(const std::string& hexXY) {
     }
 
     EC_POINT_ptr p(EC_POINT_hex2point(
-        ec_group.get(), hexXY.data(), NULL, NULL), EC_POINT_free);
+        ec_group.get(), hexXY.data(), nullptr, nullptr), EC_POINT_free);
     if (!p) {
         std::string msg("Crypto Error (sig::DeserializeXYFromHex): "
             "Could not create new EC_POINT");
@@ -347,7 +352,7 @@ std::string pcrypto::sig::PublicKey::SerializeXYToHex() const {
 
     cstring = EC_POINT_point2hex(EC_KEY_get0_group(public_key_),
         EC_KEY_get0_public_key(public_key_), POINT_CONVERSION_UNCOMPRESSED,
-        NULL);
+        nullptr);
     if (!cstring) {
         std::string msg("Crypto Error (SerializeXYToHex): "
             "Could not serialize EC public key");
@@ -372,7 +377,7 @@ int pcrypto::sig::PublicKey::VerifySignature(
     // Decode signature B64 -> DER -> ECDSA_SIG
     const unsigned char* der_SIG = (const unsigned char*)signature.data();
     ECDSA_SIG_ptr sig(
-        d2i_ECDSA_SIG(NULL, (const unsigned char**)(&der_SIG),
+        d2i_ECDSA_SIG(nullptr, (const unsigned char**)(&der_SIG),
             signature.size()), ECDSA_SIG_free);
     if (!sig) {
         return -1;

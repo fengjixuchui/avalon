@@ -18,30 +18,16 @@
  * Avalon RSA public key generation, serialization, and decryption functions.
  */
 
-#include "pkenc_private_key.h"
 #include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
-#include "base64.h"  //simple base64 enc/dec routines
+#include <memory>    // std::unique_ptr
+
 #include "crypto_shared.h"
 #include "error.h"
 #include "hex_string.h"
 #include "pkenc.h"
 #include "pkenc_public_key.h"
 #include "pkenc_private_key.h"
-
-/***Conditional compile untrusted/trusted***/
-#if _UNTRUSTED_
-#include <openssl/crypto.h>
-#include <stdio.h>
-#else
-#include "tSgxSSL_api.h"
-#endif
-/***END Conditional compile untrusted/trusted***/
 
 namespace pcrypto = tcf::crypto;
 namespace constants = tcf::crypto::constants;
@@ -61,6 +47,8 @@ namespace Error = tcf::error;
 /**
  * Utility function: deserialize RSA Private Key.
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded Serialized RSA private key to deserialize
  */
 RSA* deserializeRSAPrivateKey(const std::string& encoded) {
     BIO_ptr bio(BIO_new_mem_buf(encoded.c_str(), -1), BIO_free_all);
@@ -70,7 +58,8 @@ RSA* deserializeRSAPrivateKey(const std::string& encoded) {
         throw Error::RuntimeError(msg);
     }
 
-    RSA* private_key = PEM_read_bio_RSAPrivateKey(bio.get(), NULL, NULL, NULL);
+    RSA* private_key = PEM_read_bio_RSAPrivateKey(bio.get(),
+        nullptr, nullptr, nullptr);
     if (!private_key) {
         std::string msg("Crypto Error (deserializeRSAPrivateKey): "
             "Could not deserialize private RSA key");
@@ -83,6 +72,8 @@ RSA* deserializeRSAPrivateKey(const std::string& encoded) {
 /**
  * Constructor from encoded string.
  * Throws RuntimeError, ValueError.
+ *
+ * @param encoded serialized RSA private key
  */
 pcrypto::pkenc::PrivateKey::PrivateKey(const std::string& encoded) {
     private_key_ = deserializeRSAPrivateKey(encoded);
@@ -150,7 +141,10 @@ pcrypto::pkenc::PrivateKey& pcrypto::pkenc::PrivateKey::operator=(
 
 /**
  * Deserialize RSA Private Key.
+ * Implemented using deserializeRSAPrivateKey().
  * Throws RunrimeError, ValueError.
+ *
+ * @param encoded Serialized RSA private key to deserialize
  */
 void pcrypto::pkenc::PrivateKey::Deserialize(const std::string& encoded) {
     RSA* key = deserializeRSAPrivateKey(encoded);
@@ -191,7 +185,7 @@ void pcrypto::pkenc::PrivateKey::Generate() {
         throw Error::RuntimeError(msg);
     }
     if (!RSA_generate_key_ex(private_key.get(), constants::RSA_KEY_SIZE,
-            exp.get(), NULL)) {
+            exp.get(), nullptr)) {
         std::string msg("Crypto  Error (pkenc::PrivateKey()): "
             "Could not generate RSA key");
         throw Error::RuntimeError(msg);
@@ -206,7 +200,7 @@ void pcrypto::pkenc::PrivateKey::Generate() {
 
 
 /**
- * Serialize Private Key.
+ * Serialize a RSA private key.
  * Throws RunrimeError.
  */
 std::string pcrypto::pkenc::PrivateKey::Serialize() const {
@@ -222,7 +216,7 @@ std::string pcrypto::pkenc::PrivateKey::Serialize() const {
     }
 
     int res = PEM_write_bio_RSAPrivateKey(bio.get(), private_key_,
-        NULL, NULL, 0, 0, NULL);
+        nullptr, nullptr, 0, 0, nullptr);
     if (!res) {
         std::string msg("Crypto Error (Serialize): Could not write to BIO\n");
         throw Error::RuntimeError(msg);
@@ -244,6 +238,7 @@ std::string pcrypto::pkenc::PrivateKey::Serialize() const {
 
 /**
  * Decrypt message with RSA private key and return plaintext.
+ * Uses PKCS1 OAEP padding.
  * Throws RuntimeError.
  *
  * @param ciphertext string contains raw binary ciphertext

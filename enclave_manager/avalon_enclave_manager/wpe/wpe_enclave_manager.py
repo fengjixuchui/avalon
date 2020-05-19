@@ -27,26 +27,49 @@ import zmq
 import avalon_enclave_manager.sgx_work_order_request as work_order_request
 import avalon_enclave_manager.avalon_enclave_info as enclave_info
 import avalon_crypto_utils.crypto_utility as crypto_utils
-from database import connector
 from avalon_enclave_manager.base_enclave_manager import EnclaveManager
 from avalon_enclave_manager.worker_kv_delegate import WorkerKVDelegate
 from avalon_enclave_manager.work_order_kv_delegate import WorkOrderKVDelegate
+from avalon_enclave_manager.wpe_requester import WPERequester
 from error_code.error_status import ReceiptCreateStatus, WorkOrderStatus
-from avalon_sdk.worker.worker_details import WorkerStatus, WorkerType
-from avalon_sdk.work_order_receipt.work_order_receipt \
-    import WorkOrderReceiptRequest
 
 logger = logging.getLogger(__name__)
 
 
-class SingletonEnclaveManager(EnclaveManager):
+class WorkOrderProcessorEnclaveManager(EnclaveManager):
     """
-    Wrapper for managing Worker data
+    Manager class to handle work order processing in a worker
+    pool setup
     """
 
     def __init__(self, config):
-
         super().__init__(config)
+
+
+# -------------------------------------------------------------------------
+
+    def _create_signup_data(self):
+        """
+        Create WPE signup data.
+
+        Returns :
+            signup_data - Relevant signup data to be used for requests to the
+                          enclave
+        """
+        # Instantiate enclaveinfo & initialize enclave in the process
+        signup_data = enclave_info.WorkOrderProcessingEnclaveInfo(
+            self._config.get("EnclaveModule"))
+        self._wpe_requester = WPERequester(self._config)
+
+        # @TODO nonce to be generated using g_GenerateNonce()
+        verification_key_nonce = None
+        unique_verification_key = self._wpe_requester\
+            .get_unique_verification_key(verification_key_nonce)
+
+        # signup enclave
+        signup_data.create_enclave_signup_data(unique_verification_key)
+        # return signup data
+        return signup_data
 
 # -------------------------------------------------------------------------
 
@@ -54,22 +77,12 @@ class SingletonEnclaveManager(EnclaveManager):
         """
         Executes Boot flow of enclave manager
         """
-        logger.info("Executing boot time procedure")
 
-        # Cleanup "workers" table
-        self._worker_kv_delegate.cleanup_worker()
-
-        # Add a new worker
-        worker_info = EnclaveManager.create_json_worker(self, self._config)
-        worker_id = crypto_utils.strip_begin_end_public_key(self.enclave_id) \
-            .encode("UTF-8")
-        # Calculate sha256 of worker id to get 32 bytes. The TC spec proxy
-        # model contracts expect byte32. Then take a hexdigest for hex str.
-        worker_id = hashlib.sha256(worker_id).hexdigest()
-        self._worker_kv_delegate.add_new_worker(worker_id, worker_info)
-
-        # Cleanup wo-processing" table
-        self._wo_kv_delegate.cleanup_work_orders()
+        if self._wpe_requester.register_wo_processor(self.proof_data):
+            logger.info("WPE registration successful")
+        else:
+            logger.error("WPE registration failed. Cannot proceed further.")
+            sys.exit(1)
 
 # -------------------------------------------------------------------------
 
@@ -149,7 +162,7 @@ class SingletonEnclaveManager(EnclaveManager):
                 return
 
         except Exception as e:
-            logger.error("Problem while reading the work order %s"
+            logger.error("Problem while reading the work order %s "
                          "from wo-requests table", wo_id)
             self._kv_helper.remove("wo-processing", wo_id)
             return
@@ -219,13 +232,19 @@ class SingletonEnclaveManager(EnclaveManager):
         """
         Submits workorder request to Worker enclave and retrieves the response
 
+        Parameters :
+            input_json_str - A JSON formatted str of the request to execute
         Returns :
-            json_response - A JSON formatted str of the response recieved from
+            json_response - A JSON formatted str of the response received from
                             the enclave. Errors are also wrapped in a JSON str
                             if exceptions have occurred.
         """
         wo_response = dict()
         try:
+            wo_key_info = self._wpe_requester\
+                .preprocess_work_order(input_json_str)
+            # @TODO : Make use of key info obtained as part of preprocessing
+            #         work order. Pass on the key_info as inWorkorderExData.
             wo_request = work_order_request.SgxWorkOrderRequest(
                 self.enclave_data,
                 input_json_str)
@@ -265,7 +284,6 @@ class SingletonEnclaveManager(EnclaveManager):
             logger.error("Failed to execute boot time flow; " +
                          "exiting Intel SGX Enclave manager: {}".format(err))
             exit(1)
-
         sync_workload_exec = int(
             self._config["WorkloadExecution"]["sync_workload_execution"])
 
@@ -279,7 +297,7 @@ class SingletonEnclaveManager(EnclaveManager):
     def _start_polling_kvstore(self):
         """
         This function is runs indefinitely polling the KV Storage
-        for new work-order request and processing them. The poll
+        for new work-order requests and processing them. The poll
         is interleaved with sleeps hence avoiding busy waits. It
         terminates only when an exception occurs.
         """
@@ -320,7 +338,7 @@ class SingletonEnclaveManager(EnclaveManager):
                 self._config.get("EnclaveManager")["zmq_port"])
             logger.info("ZMQ Port hosted by Enclave")
         except Exception as ex:
-            logger.exception("Failed to bind socket" +
+            logger.exception("Failed to bind socket; " +
                              "shutting down enclave manager")
             logger.error("Exception: {} args{} details{}".format(type(ex),
                                                                  ex.args, ex))
@@ -355,7 +373,7 @@ def main(args=None):
     # parse out the configuration file first
     tcf_home = os.environ.get("TCF_HOME", "../../../../")
 
-    conf_files = ["singleton_enclave_config.toml"]
+    conf_files = ["wpe_config.toml"]
     conf_paths = [".", tcf_home + "/"+"config"]
 
     parser = argparse.ArgumentParser()
@@ -383,9 +401,9 @@ def main(args=None):
         logging.getLogger("STDERR"), logging.WARN)
 
     EnclaveManager.parse_command_line(config, remainder)
-    logger.info("Initialize singleton enclave_manager")
-    enclave_manager = SingletonEnclaveManager(config)
-    logger.info("About to start Singleton Enclave manager")
+    logger.info("Initialize WorkOrderProcessor enclave_manager")
+    enclave_manager = WorkOrderProcessorEnclaveManager(config)
+    logger.info("About to start WorkOrderProcessor Enclave manager")
     enclave_manager.start_enclave_manager()
 
 
