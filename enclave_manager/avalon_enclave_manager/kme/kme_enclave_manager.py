@@ -22,13 +22,14 @@ import sys
 import hashlib
 
 import avalon_enclave_manager.sgx_work_order_request as work_order_request
-import avalon_enclave_manager.avalon_enclave_info as enclave_info
+import avalon_enclave_manager.kme.kme_enclave_info as enclave_info
 import avalon_crypto_utils.crypto_utility as crypto_utils
 from avalon_enclave_manager.base_enclave_manager import EnclaveManager
 from avalon_enclave_manager.worker_kv_delegate import WorkerKVDelegate
 from avalon_enclave_manager.work_order_kv_delegate import WorkOrderKVDelegate
 from listener.base_jrpc_listener import parse_bind_url
-from avalon_enclave_manager.kme.kme_listener import KMEListener
+from avalon_enclave_manager.kme.kme_listener \
+    import KMEListener, construct_wo_req
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class KeyManagementEnclaveManager(EnclaveManager):
     def __init__(self, config):
 
         super().__init__(config)
+        self.proof_data_type = config.get("WorkerConfig")["ProofDataType"]
 
 # -------------------------------------------------------------------------
 
@@ -54,7 +56,7 @@ class KeyManagementEnclaveManager(EnclaveManager):
                           enclave
         """
         return enclave_info.\
-            KeyManagementEnclaveInfo(self._config.get("EnclaveModule"))
+            KeyManagementEnclaveInfo(self._config["EnclaveModule"])
 
 # -------------------------------------------------------------------------
 
@@ -90,7 +92,7 @@ class KeyManagementEnclaveManager(EnclaveManager):
         """
         try:
             wo_request = work_order_request.SgxWorkOrderRequest(
-                self.enclave_data,
+                self._config,
                 input_json_str)
             wo_response = wo_request.execute()
 
@@ -138,9 +140,9 @@ class KeyManagementEnclaveManager(EnclaveManager):
             self._config["KMEListener"].get("bind"))
 
         rpc_methods = [
-            self._GetUniqueVerificationKey,
-            self._RegisterWorkOrderProcessor,
-            self._PreProcessWorkOrder
+            self.GetUniqueVerificationKey,
+            self.RegisterWorkOrderProcessor,
+            self.PreProcessWorkOrder
         ]
         kme_listener = KMEListener(rpc_methods)
         kme_listener.start(host_name, port)
@@ -148,24 +150,46 @@ class KeyManagementEnclaveManager(EnclaveManager):
 
 # -----------------------------------------------------------------
 
-    def _GetUniqueVerificationKey(self, **params):
+    def GetUniqueVerificationKey(self, **params):
         """
         """
-        pass
+        workload_id = "kme-uid"
+        verification_key_nonce = params["nonce"]
+        in_data = json.dumps({"nonce": verification_key_nonce})
+        wo_req = construct_wo_req(in_data, workload_id, self.encryption_key)
+
+        # @TODO : Trusted implementation to be integrated
+        # wo_response = self._execute_work_order(json.dumps(wo_req))
+
+        return ""
 
 # -----------------------------------------------------------------
 
-    def _RegisterWorkOrderProcessor(self, **params):
+    def RegisterWorkOrderProcessor(self, **params):
         """
         """
-        pass
+        workload_id = "kme-reg"
+        attestation_report = params["attestation_report"]
+        in_data = json.dumps({"attestation_report": attestation_report})
+        wo_req = construct_wo_req(in_data, workload_id, self.encryption_key)
+
+        # @TODO : Trusted implementation to be integrated
+        # wo_response = self._execute_work_order(json.dumps(wo_req))
+
+        return ""
 
 # -----------------------------------------------------------------
 
-    def _PreProcessWorkOrder(self, **params):
+    def PreProcessWorkOrder(self, **params):
         """
         """
-        pass
+        wo_request = params["wo_request"]
+        encryption_key = params["encryption_key"]
+
+        # @TODO : Trusted implementation to be integrated
+        # wo_response = self._execute_work_order(wo_req, encryption_key)
+
+        return ""
 
 # -----------------------------------------------------------------
 

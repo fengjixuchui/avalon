@@ -55,7 +55,6 @@ class EnclaveManager(ABC):
         self.encryption_key_signature = signup_data.encryption_key_signature
         self.enclave_id = signup_data.enclave_id
         self.extended_measurements = measurements
-        self.proof_data_type = config.get("WorkerConfig")["ProofDataType"]
         self.proof_data = signup_data.proof_data
 
 # -------------------------------------------------------------------------
@@ -272,7 +271,7 @@ class EnclaveManager(ABC):
             "--logfile",
             help="Name of the log file, __screen__ for standard output",
             type=str)
-        parser.add_argument("--loglevel", help="Logging leve", type=str)
+        parser.add_argument("--loglevel", help="Logging level", type=str)
         parser.add_argument(
             "--lmdb_url",
             help="DB url to connect to lmdb", type=str)

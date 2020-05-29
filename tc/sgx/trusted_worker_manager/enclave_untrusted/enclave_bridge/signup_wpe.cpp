@@ -39,7 +39,8 @@ tcf_err_t SignupDataWPE::GenerateNonce(
         sgx_enclave_id_t enclaveid = g_Enclave[0].GetEnclaveId();
 
         ByteArray nonce = {};
-        nonce.resize(in_nonce_size);
+        // +1 for null character for std::string
+        nonce.resize(in_nonce_size + 1);
 
         // Create nonce and convert to hex
         sresult = g_Enclave[0].CallSgx(
@@ -88,8 +89,9 @@ tcf_err_t SignupDataWPE::CreateEnclaveData(
         // Get the enclave id for passing into the ecall
         sgx_enclave_id_t enclaveid = g_Enclave[0].GetEnclaveId();
 
+        // +1 for null character which is not included in std::string length()
         outPublicEnclaveData.resize(
-            SignupData::CalculatePublicEnclaveDataSize());
+            SignupData::CalculatePublicEnclaveDataSize() + 1);
     
         // We need target info in order to create signup data report
         sgx_target_info_t target_info = { 0 };

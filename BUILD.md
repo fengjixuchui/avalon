@@ -59,12 +59,12 @@ Follow the instructions below to execute a Docker-based build and execution.
    1. Refer to Intel SGX in Hardware-mode section in
       [PREREQUISITES document](PREREQUISITES.md) to install Intel SGX
       pre-requisites and to configure IAS keys.
-   2. Run `sudo docker-compose -f docker-compose-sgx.yaml up --build`
+   2. Run `sudo docker-compose -f docker-compose.yaml -f docker-compose-sgx.yaml up --build`
    3. For subsequent runs on the same workspace, if you changed a
       source or configuration file, run the above command again
    4. For subsequent runs on the same workspace, if you did not make any
       changes, startup and build time can be reduced by running:
-      `MAKECLEAN=0 sudo -E docker-compose -f docker-compose-sgx.yaml up`
+      `MAKECLEAN=0 sudo -E docker-compose -f docker-compose.yaml -f docker-compose-sgx.yaml up`
 3. On a successful run, you should see the message `BUILD SUCCESS`
    followed by a repetitive message `Enclave manager sleeping for 10 secs`
 4. Open a Docker container shell using following command
@@ -120,21 +120,31 @@ The steps below will set up a Python virtual environment to run Avalon.
    `$TCF_HOME/config/singleton_enclave_config.toml` with the actual hexadecimal values
    (the IAS key may be either your Primary key or Secondary key):
 
-   ```bash
+   ```
    spid = '<spid obtained from portal>'
    ias_api_key = '<ias subscription key obtained from portal>'
    ```
 
-6. If you are behind a corporate proxy, then in file
+6. If you are not behind a corporate proxy (the usual case),
+   then skip this step and go to the next step.
+
+   If you are behind a corporate proxy, then in file
    `$TCF_HOME/config/tcs_config.toml` uncomment and update the
    `https_proxy` line:
 
-   ```bash
+   ```
    #https_proxy = "http://your-proxy:your-port/"
    ```
 
-   If you are not behind a corporate proxy (the usual case),
-   then leave this line commented out.
+   If you are behind a proxy and also using Intel SGX hardware
+   (`SGX_MODE=HW`), add the following to your `/etc/aesmd.conf` file
+   and update the `aesm proxy` line:
+
+   ```
+   proxy type = manual
+   aesm proxy = http://your-proxy:your-port/
+   ```
+
 
 7. Create a Python virtual environment:
 
