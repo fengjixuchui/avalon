@@ -78,7 +78,8 @@ tcf_err_t ecall_CreateSignupDataKME(const sgx_target_info_t* inTargetInfo,
 
         // Get instance of enclave data
         EnclaveData* enclaveData = EnclaveData::getInstance();
-        enclaveData->set_extended_data((const char*) inExtData);
+	ByteArray ext_data_bytes(inExtData, inExtData+inExtDataSize); 
+        enclaveData->set_extended_data(ext_data_bytes);
 
         tcf::error::ThrowIf<tcf::error::ValueError>(
             inAllocatedPublicEnclaveDataSize < enclaveData->get_public_data_size(),
@@ -132,7 +133,11 @@ tcf_err_t ecall_CreateSignupDataKME(const sgx_target_info_t* inTargetInfo,
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 tcf_err_t ecall_VerifyEnclaveInfoKME(const char* enclave_info,
-    const char* mr_enclave, const uint8_t* ext_data) {
+    const char* mr_enclave, const uint8_t* ext_data, size_t ext_data_size) {
+    tcf::error::ThrowIfNull(ext_data, "Extended data is NULL");
+    tcf::error::ThrowIf<tcf::error::ValueError>(
+        ext_data_size != KME_SIGNUP_EXT_DATA_SIZE,
+        "Extended data size should be 32 bytes");
 
     tcf_err_t result = TCF_SUCCESS;
 
@@ -201,7 +206,7 @@ tcf_err_t ecall_VerifyEnclaveInfoKME(const char* enclave_info,
         r!=true, "Invalid Enclave Quote:  group-of-date NOT OKAY");
 
     const char* ias_report_cert = json_object_dotget_string(
-        proof_object, "ias_report_signing_certificate");
+        proof_object,"ias_report_signing_certificate");
 
     std::vector<char> verification_report_vec(
         verification_report.begin(), verification_report.end());

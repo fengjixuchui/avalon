@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "enclave_u.h"
 
 #include "error.h"
@@ -171,19 +170,21 @@ tcf_err_t SignupDataKME::VerifyEnclaveInfo(
         sgx_enclave_id_t enclaveid = g_Enclave[0].GetEnclaveId();
         tcf_err_t presult = TCF_SUCCESS;
 
+	ByteArray ext_data_bytes = HexEncodedStringToByteArray(ext_data);
         sgx_status_t sresult = g_Enclave[0].CallSgx(
             [ enclaveid,
               &presult,
               enclaveInfo,
               mr_enclave,
-              ext_data ] () {
+              ext_data_bytes ] () {
               sgx_status_t sresult =
               ecall_VerifyEnclaveInfoKME(
                              enclaveid,
                              &presult,
                              enclaveInfo.c_str(),
                              mr_enclave.c_str(),
-                             (const uint8_t*) ext_data.c_str());
+                             ext_data_bytes.data(),
+                             ext_data_bytes.size());
           return tcf::error::ConvertErrorStatus(sresult, presult);
     });
 

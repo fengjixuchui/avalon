@@ -24,10 +24,10 @@ size_t ExtWorkOrderInfoImpl::GetWorkOrderExData(ByteArray& data) {
     return 0;
 }  // ExtWorkOrderInfoImpl::GetWorkOrderExData
 
-int ExtWorkOrderInfoImpl::VerifyAttestation(const ByteArray& att_info,
-    ByteArray& mrenclave, ByteArray& mrsigner,
-    ByteArray& verification_key, ByteArray& encryption_pub_key) {
-
+int ExtWorkOrderInfoImpl::VerifyAttestation(const ByteArray& attestation_data,
+    ByteArray& mr_enclave, ByteArray& mr_signer,
+    ByteArray& verification_key_hash, ByteArray& encryption_pub_key) {
     // To be implemented
     return 0;
 }  // ExtWorkOrderInfoImpl::VerifyAttestation
+

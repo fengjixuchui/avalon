@@ -16,20 +16,18 @@
 
 import argparse
 import json
+import random
 import logging
 import os
 import sys
-import hashlib
 
 import avalon_enclave_manager.sgx_work_order_request as work_order_request
 import avalon_enclave_manager.kme.kme_enclave_info as enclave_info
-import avalon_crypto_utils.crypto_utility as crypto_utils
 from avalon_enclave_manager.base_enclave_manager import EnclaveManager
 from avalon_enclave_manager.worker_kv_delegate import WorkerKVDelegate
 from avalon_enclave_manager.work_order_kv_delegate import WorkOrderKVDelegate
 from listener.base_jrpc_listener import parse_bind_url
-from avalon_enclave_manager.kme.kme_listener \
-    import KMEListener, construct_wo_req
+from avalon_enclave_manager.kme.kme_listener import KMEListener
 
 logger = logging.getLogger(__name__)
 
@@ -68,36 +66,36 @@ class KeyManagementEnclaveManager(EnclaveManager):
 
         # Add a new worker
         worker_info = EnclaveManager.create_json_worker(self, self._config)
-        worker_id = crypto_utils.strip_begin_end_public_key(self.enclave_id) \
-            .encode("UTF-8")
-        # Calculate sha256 of worker id to get 32 bytes. The TC spec proxy
-        # model contracts expect byte32. Then take a hexdigest for hex str.
-        worker_id = hashlib.sha256(worker_id).hexdigest()
+        # Hex string read from config which is 64 characters long
+        worker_id = self._worker_id
         self._worker_kv_delegate.add_new_worker(worker_id, worker_info)
 
         # Cleanup wo-processing" table
         self._wo_kv_delegate.cleanup_work_orders()
 
 # -------------------------------------------------------------------------
-
-    def _execute_work_order(self, input_json_str, indent=4):
+    def _execute_work_order(self, input_json_str, ext_data=""):
         """
         Submits request to KME and retrieves the response
 
         Parameters :
-            input_json_str - A JSON formatted str of the request to execute
+            @param input_json_str - A JSON formatted str of the request
+            @param ext_data - Extended data to pass to trusted code
         Returns :
-            json_response - A JSON formatted str of the response received from
-                            the enclave
+            @returns json_response - A JSON formatted str of the response
+                                     received from the enclave
         """
         try:
+            logger.info("Request sent to enclave %s", input_json_str)
             wo_request = work_order_request.SgxWorkOrderRequest(
-                self._config,
-                input_json_str)
+                self._config["EnclaveModule"],
+                input_json_str,
+                ext_data
+            )
             wo_response = wo_request.execute()
-
             try:
-                json_response = json.dumps(wo_response, indent=indent)
+                json_response = json.dumps(wo_response, indent=4)
+                logger.info("Response from enclave %s", json_response)
             except Exception as err:
                 logger.error("ERROR: Failed to serialize JSON; %s", str(err))
 
@@ -153,43 +151,66 @@ class KeyManagementEnclaveManager(EnclaveManager):
     def GetUniqueVerificationKey(self, **params):
         """
         """
-        workload_id = "kme-uid"
-        verification_key_nonce = params["nonce"]
-        in_data = json.dumps({"nonce": verification_key_nonce})
-        wo_req = construct_wo_req(in_data, workload_id, self.encryption_key)
+        wo_request = self._get_request_json("GetUniqueVerificationKey")
+        wo_request["params"] = params
+        wo_response = self._execute_work_order(json.dumps(wo_request), "")
+        wo_response_json = json.loads(wo_response)
 
-        # @TODO : Trusted implementation to be integrated
-        # wo_response = self._execute_work_order(json.dumps(wo_req))
-
-        return ""
+        if "result" in wo_response_json:
+            return wo_response_json["result"]
+        else:
+            logger.error("Could not get UniqueVerificationKey")
+            return wo_response_json
 
 # -----------------------------------------------------------------
 
     def RegisterWorkOrderProcessor(self, **params):
         """
         """
-        workload_id = "kme-reg"
-        attestation_report = params["attestation_report"]
-        in_data = json.dumps({"attestation_report": attestation_report})
-        wo_req = construct_wo_req(in_data, workload_id, self.encryption_key)
+        wo_request = self._get_request_json("RegisterWorkOrderProcessor")
+        wo_request["params"] = params
+        wo_response = self._execute_work_order(json.dumps(wo_request), "")
+        wo_response_json = json.loads(wo_response)
 
-        # @TODO : Trusted implementation to be integrated
-        # wo_response = self._execute_work_order(json.dumps(wo_req))
-
-        return ""
+        if "result" in wo_response_json:
+            return wo_response_json["result"]
+        else:
+            logger.error("Could not register WPE")
+            return wo_response_json
 
 # -----------------------------------------------------------------
 
     def PreProcessWorkOrder(self, **params):
         """
         """
-        wo_request = params["wo_request"]
-        encryption_key = params["encryption_key"]
+        wo_request = self._get_request_json("PreProcessWorkOrder")
+        wo_request["params"] = params
+        wo_response = self._execute_work_order(json.dumps(wo_request), "")
+        wo_response_json = json.loads(wo_response)
 
-        # @TODO : Trusted implementation to be integrated
-        # wo_response = self._execute_work_order(wo_req, encryption_key)
+        if "result" in wo_response_json:
+            return wo_response_json["result"]
+        else:
+            logger.error("Could not preprocess work order at KME")
+            return wo_response_json
 
-        return ""
+
+# -----------------------------------------------------------------
+
+    def _get_request_json(self, method):
+        """
+        Helper method to synthesize jrpc request JSON
+
+        Parameters :
+            @param method - JRPC method to be set in the method field
+        Returns :
+            @returns A dict representing the basic request JSON
+        """
+        return {
+            "jsonrpc": "2.0",
+            "method": method,
+            "id": random.randint(0, 100000)
+        }
 
 # -----------------------------------------------------------------
 

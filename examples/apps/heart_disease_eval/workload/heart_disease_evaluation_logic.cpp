@@ -16,6 +16,7 @@
 #include <string>
 #include <cmath>
 #include "heart_disease_evaluation_logic.h"
+#include "utils.h"
 
 // Calculate risk of having heart disease given input parameters.
 

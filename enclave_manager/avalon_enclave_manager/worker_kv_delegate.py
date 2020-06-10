@@ -14,8 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import hashlib
+import avalon_sdk.worker.worker_details as worker_details
 
 
 logger = logging.getLogger(__name__)
@@ -70,3 +72,17 @@ class WorkerKVDelegate:
         logger.info("Adding enclave workers to workers table")
 
         return self._kv_helper.set("workers", worker_id, worker_info)
+
+    def get_worker_by_id(self, worker_id):
+        """
+        Get worker instance from database
+        Parameters :
+            @param worker_id - Id of worker to be retrieved
+        Returns :
+            @returns worker_obj - A worker retrieved from kv storage
+        """
+        json_dict = json.loads(self._kv_helper.get("workers", worker_id))
+        worker_obj = worker_details.SGXWorkerDetails()
+        worker_obj.load_worker(json_dict['details'])
+
+        return worker_obj

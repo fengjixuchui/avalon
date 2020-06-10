@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+
 #include "enclave_t.h"
 
 #include <stdio.h>
@@ -36,8 +37,7 @@
 #include "signup_enclave_util.h"
 #include "verify-report.h"
 
-
-static void CreateReportDataWPE(const uint8_t* ext_data,
+static void CreateReportDataWPE(const char* ext_data,
     std::string& enclave_encrypt_key,
     sgx_report_data_t* report_data);
 
@@ -91,9 +91,13 @@ tcf_err_t ecall_CreateSignupDataWPE(const sgx_target_info_t* inTargetInfo,
     try {
         tcf::error::ThrowIfNull(inTargetInfo, "Target info pointer is NULL");
         tcf::error::ThrowIfNull(inExtData, "Extended data is NULL");
-        tcf::error::ThrowIfNull(inExtDataSig,
-            "Extended data signature input is NULL");
-        tcf::error::ThrowIfNull(inExtDataSize, "Extended data size is NULL");
+	tcf::error::ThrowIf<tcf::error::ValueError>(
+	    inExtDataSize == 0,
+	    "Extended data size shouldn't be zero");
+        // Disable this check for now, will enable it once we have
+	// proper value in inExtDataSig
+        /* tcf::error::ThrowIfNull(inExtDataSig,
+            "Extended data signature input is NULL");*/
         tcf::error::ThrowIfNull(outPublicEnclaveData,
             "Public enclave data pointer is NULL");
         tcf::error::ThrowIfNull(outEnclaveReport,
@@ -109,7 +113,8 @@ tcf_err_t ecall_CreateSignupDataWPE(const sgx_target_info_t* inTargetInfo,
            KME Verifying key
         */
 
-        enclaveData->set_extended_data((const char*) inExtData);
+	ByteArray ext_data_bytes(inExtData, inExtData+inExtDataSize);
+        enclaveData->set_extended_data(ext_data_bytes);
 
         tcf::error::ThrowIf<tcf::error::ValueError>(
             inAllocatedPublicEnclaveDataSize < enclaveData->get_public_data_size(),
@@ -183,7 +188,8 @@ void CreateSignupReportDataWPE(const uint8_t* ext_data,
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 tcf_err_t ecall_VerifyEnclaveInfoWPE(const char* enclave_info,
-    const char* mr_enclave, const uint8_t* ext_data) {
+    const char* mr_enclave, const char* ext_data) {
+    tcf::error::ThrowIfNull(ext_data, "Extended data is NULL");
 
     tcf_err_t result = TCF_SUCCESS;
 
@@ -303,7 +309,7 @@ tcf_err_t ecall_VerifyEnclaveInfoWPE(const char* enclave_info,
 }  // ecall_VerifyEnclaveInfoWPE
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-void CreateReportDataWPE(const uint8_t* ext_data,
+void CreateReportDataWPE(const char* ext_data,
     std::string& enclave_encrypt_key,
     sgx_report_data_t* report_data) {
     // We will put the following in the report data
@@ -321,7 +327,7 @@ void CreateReportDataWPE(const uint8_t* ext_data,
     uint8_t enc_key_hash[SGX_HASH_SIZE] = {0};
     uint8_t ext_data_hash[SGX_HASH_SIZE] = {0};
     ComputeSHA256Hash(enclave_encrypt_key, enc_key_hash);
-    ComputeSHA256Hash((const char*) ext_data, ext_data_hash);
+    ComputeSHA256Hash(ext_data, ext_data_hash);
 
     // Concatenate hash of public encryption key and hash of extended data
     strncpy((char*)report_data->d,
