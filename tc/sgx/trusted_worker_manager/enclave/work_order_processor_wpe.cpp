@@ -84,10 +84,10 @@ namespace tcf {
         size_t i;
         for (i = 0; i < count; i++) {
             JSON_Object* data_object = json_array_get_object(data_array, i);
-            WorkOrderDataHandler wo_data(session_key, session_key_iv_bytes);
-            // Use in-data key from preprocessed json
-            wo_data.Unpack(enclave_data, data_object,
+            WorkOrderDataHandlerWPE wo_data(session_key, session_key_iv_bytes,
                 wo_pre_proc_keys.in_data_keys[i].decrypted_data);
+            // Use in-data key from preprocessed json
+            wo_data.Unpack(data_object);
             data_items_in.emplace_back(wo_data);
         }
         data_array = json_object_get_array(params_object, "outData");
@@ -95,10 +95,10 @@ namespace tcf {
         count = json_array_get_count(data_array);
         for (i = 0; i < count; i++) {
             JSON_Object* data_object = json_array_get_object(data_array, i);
-            WorkOrderDataHandler wo_data(session_key, session_key_iv_bytes);
-            // Use out-data key from preprocessed json
-            wo_data.Unpack(enclave_data, data_object,
+            WorkOrderDataHandlerWPE wo_data(session_key, session_key_iv_bytes,
                 wo_pre_proc_keys.out_data_keys[i].decrypted_data);
+            // Use out-data key from preprocessed json
+            wo_data.Unpack(data_object);
             data_items_out.emplace_back(wo_data);
         }
     }
@@ -121,13 +121,12 @@ namespace tcf {
         // extVerificationKeySignature from preprocessed json used at client
         // to do 2 step signing verification.
         //
-        // extVerificationKey - needs to be used by client to verify signature
-        //                of the output
+        // extVerificationKey - PEM encoded public key which needs to be
+        //            used by client to verify signature of the output
         // extVerificationKeySignature - client needs to verify using
-        //                Worker's(KME) public verification key
+        //            Worker's(KME) public verification key
         JsonSetStr(result, "extVerificationKey",
-            ByteArrayToBase64EncodedString(
-                wo_pre_proc_keys.verification_key).c_str(),
+            (wo_pre_proc_keys.verification_key).c_str(),
             "failed to serialize verification key");
         JsonSetStr(result, "extVerificationKeySignature",
             ByteArrayToBase64EncodedString(

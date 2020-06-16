@@ -37,6 +37,14 @@ void WorkOrderPreProcessedKeys::Unpack(const JSON_Object* keys_object,
 
     data_keys.index = GetJsonNumber(keys_object, "index");
     encrypted_data_key = GetJsonStr(keys_object, "encrypted-data-key");
+
+    // skip decrypting data encryption key if its value is
+    // equivalent to empty or null or "-"
+    if (encrypted_data_key.empty() ||  "null" == encrypted_data_key ||
+        "-" == encrypted_data_key) {
+        return;
+    }
+
     // Decrypt base64 encoded data key using symmetric key(after decryption)
     // from work_order_key_info json
     data_keys.decrypted_data = DecryptKey(this->sym_key,
@@ -98,12 +106,10 @@ tcf_err_t WorkOrderPreProcessedKeys::ParsePreProcessingJson(
     this->signing_key = DecryptKey(this->sym_key,
         Base64EncodedStringToByteArray(encrypted_signing_key));
 
-    std::string wo_verification_key = GetJsonStr(wo_keys_obj,
+    this->verification_key = GetJsonStr(wo_keys_obj,
         "wo-verification-key",
         "failed to retrieve work order verification key "
         "from preprocessed keys");
-    this->verification_key = \
-        Base64EncodedStringToByteArray(wo_verification_key);
 
     std::string wo_verification_key_sig = GetJsonStr(wo_keys_obj,
         "wo-verification-key-sig",
