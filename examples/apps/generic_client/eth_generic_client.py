@@ -25,6 +25,7 @@ import asyncio
 
 import config.config as pconfig
 import utility.logger as plogger
+import utility.hex_utils as hex_utils
 import avalon_crypto_utils.crypto_utility as crypto_utility
 from avalon_sdk.worker.worker_details import WorkerType, WorkerStatus
 import avalon_sdk.worker.worker_details as worker_details
@@ -46,6 +47,8 @@ from avalon_sdk.connector.blockchains.ethereum.ethereum_worker_registry \
     import EthereumWorkerRegistryImpl
 from avalon_sdk.connector.blockchains.ethereum.ethereum_work_order \
     import EthereumWorkOrderProxyImpl
+from avalon_sdk.connector.blockchains.common.contract_response \
+    import ContractResponse
 
 
 # Remove duplicate loggers
@@ -90,13 +93,18 @@ def _parse_command_line(args):
         default="registry",
         choices={"registry", "listing"},
         type=str)
-    parser.add_argument(
+    mutually_excl_group_worker = parser.add_mutually_exclusive_group()
+    mutually_excl_group_worker.add_argument(
         "-w", "--worker_id",
-        help="worker id (hex string) to use to submit a work order",
+        help="worker id in plain text to use to submit a work order",
+        type=str)
+    mutually_excl_group_worker.add_argument(
+        "-wx", "--worker_id_hex",
+        help="worker id as hex string to use to submit a work order",
         type=str)
     parser.add_argument(
         "-l", "--workload_id",
-        help='workload id (hex string) for a given worker',
+        help='workload id for a given worker',
         type=str)
     parser.add_argument(
         "-i", "--in_data",
@@ -333,46 +341,45 @@ def _get_first_active_worker(worker_registry, worker_id, config):
     worker_retrieve_result = None
     if not worker_id:
         # Lookup all worker id present on  blockchain
-        worker_lookup_result = worker_registry.worker_lookup(
+        # return tuple (workers count, lookup tag and list of
+        # workers)
+        count, _, worker_ids = worker_registry.worker_lookup(
             WorkerType.TEE_SGX,
             config["WorkerConfig"]["OrganizationId"],
             config["WorkerConfig"]["ApplicationTypeId"],
             jrpc_req_id
         )
-        logger.info("\n Worker lookup response: {}\n".format(
-            json.dumps(worker_lookup_result, indent=4)
-        ))
-        if "result" in worker_lookup_result and \
-                "ids" in worker_lookup_result["result"].keys():
-            if worker_lookup_result["result"]["totalCount"] != 0:
-                worker_ids = worker_lookup_result["result"]["ids"]
-                # Filter workers by status(active) field
-                # Return first worker whose status is active
-                for w_id in worker_ids:
-                    jrpc_req_id += 1
-                    worker = worker_registry\
-                        .worker_retrieve(w_id, jrpc_req_id)
-                    if worker["result"]["status"] == WorkerStatus.ACTIVE.value:
-                        worker_retrieve_result = worker
-                        worker_id = w_id
-                        break
-            else:
-                logger.error("No workers found")
+        logger.info("\n Worker lookup response: count {}"
+                    "\n Workers {}\n".format(
+                        count, worker_ids))
+        if count > 0:
+            # Filter workers by status(active) field
+            # Return first worker whose status is active
+            for w_id in worker_ids:
+                jrpc_req_id += 1
+                # worker retrieve return tuple of worker
+                # status, worker type, Org id, app type ids
+                # details of worker.
+                w_status, _, _, _, w_details = worker_registry.worker_retrieve(
+                    w_id,
+                    jrpc_req_id)
+                if w_status == WorkerStatus.ACTIVE.value:
+                    worker_id = w_id
+                    break
         else:
-            logger.error("Failed to lookup worker")
+            logger.error("No workers found")
     else:
-        worker_retrieve_result = worker_registry\
-            .worker_retrieve(worker_id, jrpc_req_id)
+        w_status, _, _, _, w_details = worker_registry.worker_retrieve(
+            worker_id, jrpc_req_id)
+        if w_status != WorkerStatus.ACTIVE.value:
+            logger.info("Worker {} is not active".format(worker_id))
+            sys.exit(-1)
 
-    if worker_retrieve_result is None:
-        logger.error("Failed to lookup worker")
-        return None, None
     # Initializing Worker Object
-    logger.info("\n Worker retrieve response: {}\n".format(
-        json.dumps(worker_retrieve_result, indent=4)
-    ))
+    logger.info("\n Worker retrieve response: {} {}\n".format(
+        worker_id, w_details))
     worker_obj = worker_details.SGXWorkerDetails()
-    worker_obj.load_worker(worker_retrieve_result["result"]["details"])
+    worker_obj.load_worker(json.loads(w_details))
 
     return worker_obj, worker_id
 
@@ -415,6 +422,10 @@ def Main(args=None):
 
     # worker id
     worker_id = options.worker_id
+    worker_id_hex = options.worker_id_hex
+
+    worker_id = worker_id_hex if not worker_id \
+        else hex_utils.get_worker_id_from_name(worker_id)
 
     # work load id of worker
     workload_id = options.workload_id
@@ -504,15 +515,15 @@ def Main(args=None):
         id=jrpc_req_id
     )
     logger.info("Work order submit response : {}\n ".format(
-        json.dumps(response, indent=4)
-    ))
+        response)
+    )
 
     if blockchain is None:
         if "error" in response and response["error"]["code"] != \
                 WorkOrderStatus.PENDING:
             sys.exit(1)
     else:
-        if response != 0:
+        if response != ContractResponse.SUCCESS:
             sys.exit(1)
 
     # Create receipt
@@ -536,7 +547,7 @@ def Main(args=None):
             if _verify_wo_res_signature(res['result'],
                                         worker_obj.verification_key,
                                         wo_params.get_requester_nonce()) \
-                                            is False:
+                    is False:
                 logger.error(
                     "Work order response signature verification Failed")
                 sys.exit(1)

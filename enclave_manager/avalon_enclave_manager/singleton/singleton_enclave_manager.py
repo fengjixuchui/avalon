@@ -39,6 +39,7 @@ class SingletonEnclaveManager(WOProcessorManager):
 
         super().__init__(config)
         self.proof_data_type = config.get("WorkerConfig")["ProofDataType"]
+        self._identity = self._worker_id
 
 # -------------------------------------------------------------------------
 
@@ -48,16 +49,17 @@ class SingletonEnclaveManager(WOProcessorManager):
         """
         logger.info("Executing boot time procedure")
 
-        # Cleanup "workers" table
-        self._worker_kv_delegate.cleanup_worker()
-
         # Add a new worker
         worker_info = EnclaveManager.create_json_worker(self, self._config)
         # Hex string read from config which is 64 characters long
         worker_id = self._worker_id
         self._worker_kv_delegate.add_new_worker(worker_id, worker_info)
+        # Update mapping of worker_id to workers in a pool
+        self._worker_kv_delegate.update_worker_map(
+            worker_id, self._identity)
 
-        # Cleanup wo-processing" table
+        # Cleanup all stale work orders for this worker which
+        # used old worker keys
         self._wo_kv_delegate.cleanup_work_orders()
 
 # -------------------------------------------------------------------------
@@ -108,11 +110,12 @@ def main(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="configuration file", nargs="+")
     parser.add_argument("--config-dir", help="configuration folder", nargs="+")
-    parser.add_argument(
-        "--worker_id", help="Id of worker in plain text", type=str)
+    parser.add_argument("--worker_id",
+                        help="Id of worker in plain text", type=str)
     parser.add_argument("--workloads",
                         help="Comma-separated list of workloads supported",
                         type=str)
+
     (options, remainder) = parser.parse_known_args(args)
 
     if options.config:

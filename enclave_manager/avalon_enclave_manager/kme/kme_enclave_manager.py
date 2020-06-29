@@ -24,8 +24,6 @@ import sys
 import avalon_enclave_manager.sgx_work_order_request as work_order_request
 import avalon_enclave_manager.kme.kme_enclave_info as enclave_info
 from avalon_enclave_manager.base_enclave_manager import EnclaveManager
-from avalon_enclave_manager.worker_kv_delegate import WorkerKVDelegate
-from avalon_enclave_manager.work_order_kv_delegate import WorkOrderKVDelegate
 from listener.base_jrpc_listener import parse_bind_url
 from avalon_enclave_manager.kme.kme_listener import KMEListener
 from jsonrpc.exceptions import JSONRPCDispatchException
@@ -65,14 +63,18 @@ class KeyManagementEnclaveManager(EnclaveManager):
         """
         logger.info("Executing boot time procedure")
 
+        # Cleanup all stale work orders for this worker which
+        # used old worker keys
+        self._wo_kv_delegate.cleanup_work_orders()
+
+        # Clear all WPEs mapped to this worker_id (pool). WPEs will have
+        # to register afresh to get into the pool now.
+        self._worker_kv_delegate.cleanup_pool(self._worker_id)
+
         # Add a new worker
         worker_info = EnclaveManager.create_json_worker(self, self._config)
         # Hex string read from config which is 64 characters long
-        worker_id = self._worker_id
-        self._worker_kv_delegate.add_new_worker(worker_id, worker_info)
-
-        # Cleanup wo-processing" table
-        self._wo_kv_delegate.cleanup_work_orders()
+        self._worker_kv_delegate.add_new_worker(self._worker_id, worker_info)
 
 # -------------------------------------------------------------------------
     def _execute_work_order(self, input_json_str, ext_data=""):
@@ -239,8 +241,13 @@ def main(args=None):
     parser.add_argument("--config-dir", help="configuration folder", nargs="+")
     parser.add_argument("--bind", help="KME listener url for requests to KME",
                         type=str)
+    parser.add_argument("--worker_id",
+                        help="Id of worker in plain text", type=str)
     parser.add_argument(
-        "--worker_id", help="Id of worker in plain text", type=str)
+        "--wpe-mrenclave",
+        help="MRENCLAVE of WPE that can register with this KME",
+        type=str)
+
     (options, remainder) = parser.parse_known_args(args)
 
     if options.config:
@@ -260,6 +267,8 @@ def main(args=None):
         config["KMEListener"]["bind"] = options.bind
     if options.worker_id:
         config["WorkerConfig"]["worker_id"] = options.worker_id
+    if options.wpe_mrenclave:
+        config["EnclaveModule"]["wpe_mrenclave"] = options.wpe_mrenclave
 
     plogger.setup_loggers(config.get("Logging", {}))
     sys.stdout = plogger.stream_to_logger(

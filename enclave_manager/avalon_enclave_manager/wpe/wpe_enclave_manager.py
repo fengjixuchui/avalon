@@ -17,6 +17,7 @@
 import argparse
 import json
 import logging
+import hashlib
 import os
 import sys
 
@@ -41,6 +42,10 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
     def __init__(self, config):
 
         super().__init__(config)
+        # Calculate sha256 of enclave id to get 32 bytes. Then take a
+        # hexdigest for hex str.
+        enclave_id_utf = self.enclave_id.encode("UTF-8")
+        self._identity = hashlib.sha256(enclave_id_utf).hexdigest()
 
 # -------------------------------------------------------------------------
 
@@ -64,9 +69,20 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
                     verification_key_nonce)
         response = self._wpe_requester.get_unique_verification_key(
             verification_key_nonce)
+        if response is None:
+            logger.error("Failed to get Unique ID from KME")
+            return None
         # Received response contains result,verification_key and
         # verification_key_signature delimited by ' '
         self._unique_verification_key = response.split(' ')[1]
+        self._unique_verification_key_signature = response.split(' ')[2]
+        # Verify unique verification key signature using unique id
+        result = signup_cpp_obj.VerifyUniqueIdSignature(
+            self._unique_verification_key,
+            self._unique_verification_key_signature)
+        if result != 0:
+            logger.error("Failed to verify unique id signature")
+            return None
         # signup enclave
         signup_data.create_enclave_signup_data(self._unique_verification_key)
         # return signup data
@@ -79,11 +95,15 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
         """
         Executes Boot flow of enclave manager
         """
+
         if self._wpe_requester\
             .register_wo_processor(self._unique_verification_key,
                                    self.encryption_key,
                                    self.proof_data):
             logger.info("WPE registration successful")
+            # Update mapping of worker_id to workers in a pool
+            self._worker_kv_delegate.update_worker_map(
+                self._worker_id, self._identity)
         else:
             logger.error("WPE registration failed. Cannot proceed further.")
             sys.exit(1)
@@ -97,16 +117,16 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
         Parameters :
             input_json_str - A JSON formatted str of the request to execute
         Returns :
-            json_response - A JSON formatted str of the response received from
-                            the enclave. Errors are also wrapped in a JSON str
-                            if exceptions have occurred.
+            json_response - A JSON response received from the enclave. Errors
+                            are also wrapped in a JSON str if exceptions have
+                            occurred.
         """
         pre_proc_output = self._wpe_requester\
             .preprocess_work_order(input_json_str, self.encryption_key)
         if "error" in pre_proc_output:
             # If error in preprocessing response, skip workorder processing
-            logger.error("failed to preprocess at WPE enclave manager")
-            return json.dumps(pre_proc_output)
+            logger.error("Failed to preprocess at WPE enclave manager.")
+            return pre_proc_output
 
         wo_request = work_order_request.SgxWorkOrderRequest(
             self._config.get("EnclaveModule"),

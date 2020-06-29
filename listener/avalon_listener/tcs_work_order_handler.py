@@ -65,11 +65,37 @@ class TCSWorkOrderHandler:
         """
 
         work_orders = self.kv_helper.lookup("wo-timestamps")
+        # Lookup all workers.
+        workers = self.kv_helper.lookup("worker-pool")
+        pending_wo_ids = []
+        processed_wo_ids = []
+        processing_wo_ids = []
+
+        # Get the pending/processed/processing list of work order for each
+        # worker and collate them into respective lists
+        for worker in workers:
+            wo_ids_csv = self.kv_helper.get("wo-worker-scheduled", worker)
+            wo_ids = [] if wo_ids_csv is None else wo_ids_csv.split(",")
+            pending_wo_ids.extend(wo_ids)
+
+            wo_ids_csv = self.kv_helper.get("wo-worker-processed", worker)
+            wo_ids = [] if wo_ids_csv is None else wo_ids_csv.split(",")
+            processed_wo_ids.extend(wo_ids)
+
+            # Get all processing identities from worker-pool. The identities
+            # could be WPE enclave_id or worker_id itself (for Singleton).
+            processors_csv = self.kv_helper.get("worker-pool", worker)
+            if processors_csv is not None:
+                for processor in processors_csv.split(","):
+                    processing_wo_id = self.kv_helper.get(
+                        "wo-worker-processing", processor)
+                    if processing_wo_id is not None:
+                        processing_wo_ids.append(processing_wo_id)
+
         for wo_id in work_orders:
 
-            if(self.kv_helper.get("wo-scheduled", wo_id) is None and
-                    self.kv_helper.get("wo-processing", wo_id) is None and
-                    self.kv_helper.get("wo-processed", wo_id) is None):
+            if wo_id not in pending_wo_ids and wo_id not in processed_wo_ids \
+                    and wo_id not in processing_wo_ids:
 
                 if(self.kv_helper.get("wo-requests", wo_id) is not None):
                     self.kv_helper.remove("wo-requests", wo_id)
@@ -234,13 +260,18 @@ class TCSWorkOrderHandler:
 
         if((self.workorder_count + 1) > self.max_workorder_count):
 
+            # wo_ids is a csv of work order ids retrieved from database
+            wo_ids = self.kv_helper.get("wo-worker-processed", worker_id)
+            processed_wo_ids = [] if wo_ids is None else wo_ids.split(",")
+
             # if max count reached clear a processed entry
             work_orders = self.kv_helper.lookup("wo-timestamps")
             for id in work_orders:
 
                 # If work order is processed then remove from table
-                if(self.kv_helper.get("wo-processed", id) is not None):
-                    self.kv_helper.remove("wo-processed", id)
+                if id in processed_wo_ids:
+                    self.kv_helper.csv_search_delete(
+                        "wo-worker-processed", worker_id, id)
                     self.kv_helper.remove("wo-requests", id)
                     self.kv_helper.remove("wo-responses", id)
                     self.kv_helper.remove("wo-receipts", id)
@@ -263,22 +294,22 @@ class TCSWorkOrderHandler:
             # Don't change the order of table updation.
             # The order is important for clean up if the TCS is restarted in
             # the middle.
-            # Add entry to wo-worker-pending which holds all the work order id
-            # separated by comma(csv) to be processed by corresponding worker.
-            # i.e. - <worker_id> -> <wo_id>,<wo_id>,<wo_id>...
+            # Add entry to wo-worker-scheduled which holds all the work order
+            # id separated by comma(csv) to be processed by corresponding
+            # worker. i.e. - <worker_id> -> <wo_id>,<wo_id>,<wo_id>...
             epoch_time = str(time.time())
 
             # Update the tables
             self.kv_helper.set("wo-timestamps", wo_id, epoch_time)
             self.kv_helper.set("wo-requests", wo_id, input_json_str)
-            self.kv_helper.csv_append("wo-worker-pending", worker_id, wo_id)
+            self.kv_helper.csv_append("wo-worker-scheduled", worker_id, wo_id)
             # Add to the internal FIFO
             self.workorder_list.append(wo_id)
             self.workorder_count += 1
             raise JSONRPCDispatchException(
                 WorkOrderStatus.PENDING,
-                "Work order is computing. Please query for WorkOrderGetResult \
-                to view the result",
+                "Work order is computing. Please query for WorkOrderGetResult"
+                + " to view the result",
                 data)
 
         # Workorder id already exists
