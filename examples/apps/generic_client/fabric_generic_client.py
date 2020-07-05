@@ -231,21 +231,26 @@ class GenericClient():
         requester_id = secrets.token_hex(32)
         requester_nonce = secrets.token_hex(16)
         # Create work order params
-        wo_params = WorkOrderParams(
-            self.work_order_id, worker_id, workload_id, requester_id,
-            session_key, session_iv, requester_nonce,
-            result_uri=" ", notify_uri=" ",
-            worker_encryption_key=worker_encrypt_key,
-            data_encryption_algorithm="AES-GCM-256"
-        )
+        try:
+            wo_params = WorkOrderParams(
+                self.work_order_id, worker_id, workload_id, requester_id,
+                session_key, session_iv, requester_nonce,
+                result_uri=" ", notify_uri=" ",
+                worker_encryption_key=worker_encrypt_key,
+                data_encryption_algorithm="AES-GCM-256"
+            )
+        except Exception as err:
+            return False, err
         # Add worker input data
         for value in in_data:
             wo_params.add_in_data(value)
 
         # Encrypt work order request hash
-        wo_params.add_encrypted_request_hash()
+        code, out_json = wo_params.add_encrypted_request_hash()
+        if not code:
+            return code, out_json
 
-        return wo_params
+        return True, wo_params
 
     def create_work_order_receipt(self, wo_receipt, wo_params,
                                   client_private_key, jrpc_req_id):
@@ -539,10 +544,14 @@ def Main(args=None):
         blockchain, worker_registry, worker_id)
     # Create work order
     verification_key = worker_obj.verification_key
-    wo_params = generic_client.create_work_order_params(
+    code, wo_params = generic_client.create_work_order_params(
         worker_id, workload_id,
         in_data, worker_obj.encryption_key,
         session_key, session_iv, verification_key)
+
+    if not code:
+        logger.error("Work order submission failed")
+        exit(1)
 
     client_private_key = crypto_utility.generate_signing_keys()
     if requester_signature:
@@ -593,7 +602,7 @@ def Main(args=None):
         jrpc_req_id+1)
 
     # Check if result field is present in work order response
-    if "result" in res:
+    if res and "result" in res:
         # Verify work order response signature
         if generic_client.verify_wo_res_signature(
                 res['result'],

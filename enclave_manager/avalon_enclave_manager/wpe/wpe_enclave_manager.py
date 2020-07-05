@@ -121,18 +121,27 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
                             are also wrapped in a JSON str if exceptions have
                             occurred.
         """
-        pre_proc_output = self._wpe_requester\
-            .preprocess_work_order(input_json_str, self.encryption_key)
-        if "error" in pre_proc_output:
-            # If error in preprocessing response, skip workorder processing
-            logger.error("Failed to preprocess at WPE enclave manager.")
-            return pre_proc_output
+        try:
+            pre_proc_output = self._wpe_requester\
+                .preprocess_work_order(input_json_str, self.encryption_key)
+            if "error" in pre_proc_output:
+                # If error in preprocessing response, skip workorder processing
+                logger.error("Failed to preprocess at WPE enclave manager.")
+                return pre_proc_output
 
-        wo_request = work_order_request.SgxWorkOrderRequest(
-            self._config.get("EnclaveModule"),
-            input_json_str,
-            pre_proc_output)
-        return wo_request.execute()
+            wo_request = work_order_request.SgxWorkOrderRequest(
+                "WPE",
+                input_json_str,
+                pre_proc_output)
+            wo_response = wo_request.execute()
+        except Exception as e:
+            logger.error("failed to execute work order; %s", str(e))
+            wo_response = dict()
+            wo_response["error"] = dict()
+            wo_response["error"]["code"] = WorkOrderStatus.FAILED
+            wo_response["error"]["message"] = str(e)
+            logger.info("unknown enclave type response = %s", wo_response)
+        return wo_response
 
 # -------------------------------------------------------------------------
 
@@ -155,9 +164,7 @@ def main(args=None):
                         type=str)
     parser.add_argument(
         "--worker_id", help="Id of worker in plain text", type=str)
-    parser.add_argument("--workloads",
-                        help="Comma-separated list of workloads supported",
-                        type=str)
+
     (options, remainder) = parser.parse_known_args(args)
 
     if options.config:
@@ -175,8 +182,6 @@ def main(args=None):
 
     if options.kme_listener_url:
         config["KMEListener"]["kme_listener_url"] = options.kme_listener_url
-    if options.workloads:
-        config["WorkerConfig"]["workloads"] = options.workloads
     if options.worker_id:
         config["WorkerConfig"]["worker_id"] = options.worker_id
 
@@ -186,11 +191,16 @@ def main(args=None):
     sys.stderr = plogger.stream_to_logger(
         logging.getLogger("STDERR"), logging.WARN)
 
-    EnclaveManager.parse_command_line(config, remainder)
-    logger.info("Initialize WorkOrderProcessor enclave_manager")
-    enclave_manager = WorkOrderProcessorEnclaveManager(config)
-    logger.info("About to start WorkOrderProcessor Enclave manager")
-    enclave_manager.start_enclave_manager()
+    try:
+        EnclaveManager.parse_command_line(config, remainder)
+        logger.info("Initialize WorkOrderProcessor enclave_manager")
+        enclave_manager = WorkOrderProcessorEnclaveManager(config)
+        logger.info("About to start WorkOrderProcessor Enclave manager")
+        enclave_manager.start_enclave_manager()
+    except Exception as e:
+        logger.error("Exception occurred while running WPE, " +
+                     "exiting WPE enclave manager")
+        exit(1)
 
 
 main()

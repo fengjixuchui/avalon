@@ -88,9 +88,13 @@ class SingletonEnclaveManager(WOProcessorManager):
                             the enclave. Errors are also wrapped in a JSON str
                             if exceptions have occurred.
         """
-        wo_request = work_order_request.SgxWorkOrderRequest(
-            self._config,
-            input_json_str)
+        try:
+            wo_request = work_order_request.SgxWorkOrderRequest(
+                "SINGLETON",
+                input_json_str)
+        except Exception as e:
+            logger.exception(
+                'Failed to initialize SgxWorkOrderRequest; %s', str(e))
         return wo_request.execute()
 
 
@@ -112,9 +116,6 @@ def main(args=None):
     parser.add_argument("--config-dir", help="configuration folder", nargs="+")
     parser.add_argument("--worker_id",
                         help="Id of worker in plain text", type=str)
-    parser.add_argument("--workloads",
-                        help="Comma-separated list of workloads supported",
-                        type=str)
 
     (options, remainder) = parser.parse_known_args(args)
 
@@ -131,8 +132,6 @@ def main(args=None):
         logger.error(str(e))
         sys.exit(-1)
 
-    if options.workloads:
-        config["WorkerConfig"]["workloads"] = options.workloads
     if options.worker_id:
         config["WorkerConfig"]["worker_id"] = options.worker_id
 
