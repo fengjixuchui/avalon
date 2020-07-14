@@ -16,7 +16,7 @@ import json
 import logging
 import importlib
 
-import avalon_crypto_utils.crypto.crypto as crypto
+import avalon_crypto_utils.crypto_utility as crypto
 
 logger = logging.getLogger(__name__)
 
