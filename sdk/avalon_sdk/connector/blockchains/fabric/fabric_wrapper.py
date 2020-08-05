@@ -23,6 +23,8 @@ from avalon_sdk.connector.blockchains.common.contract_response \
 from avalon_sdk.connector.blockchains.fabric import base
 from avalon_sdk.connector.blockchains.fabric import tx_committer
 from avalon_sdk.connector.blockchains.fabric import event_listener
+from avalon_sdk.connector.blockchains.fabric.chaincode_methods \
+    import ValidChainCodeMethods
 from hfc.protos.common import common_pb2 as common
 
 logging.basicConfig(
@@ -35,6 +37,18 @@ class FabricWrapper():
     It provides wrapper functions to invoke and query chain code.
     """
 
+    # Class variable
+    network_config = None
+
+    @classmethod
+    def init_network_config(cls, net_config_file):
+        # Read network file path from fabric toml file.
+        # Initalize the class variable network_config
+        if FabricWrapper.network_config is None:
+            logging.info("INITIALIZING network_config")
+            with open(net_config_file, 'r') as profile:
+                FabricWrapper.network_config = json.load(profile)
+
     def __init__(self, config):
         """
         Constructor to initialize wrapper with required parameter.
@@ -44,26 +58,21 @@ class FabricWrapper():
                   These parameters are read from a .toml file
         """
         if self.__validate(config):
-            # Read network file path from fabric toml file.
-            with open(self.__network_conf_file, 'r') as profile:
-                self.__network_config = json.load(profile)
+            FabricWrapper.init_network_config(self.__network_conf_file)
             self.__channel_name = config["fabric"]["channel_name"]
-            self.__orgname = base.get_net_info(self.__network_config,
+            self.__orgname = base.get_net_info(FabricWrapper.network_config,
                                                'client', 'organization')
             logging.debug("Org name choose: {}".format(self.__orgname))
             self.__peername = random.choice(base.get_net_info(
-                self.__network_config, 'organizations', self.__orgname,
+                FabricWrapper.network_config, 'organizations', self.__orgname,
                 'peers'))
             # Get a txn committer
             self.__txn_committer = tx_committer.TxCommitter(
                 self.__network_conf_file,
                 self.__channel_name, self.__orgname,
                 self.__peername, 'Admin')
-            with open(
-                self.__tcf_home +
-                    '/sdk/avalon_sdk/connector/blockchains/fabric/' +
-                    'methods.json', 'r') as all_methods:
-                self.__valid_calls = json.load(all_methods)
+            cc_methods = ValidChainCodeMethods()
+            self.__valid_calls = cc_methods.get_valid_cc_methods()
         else:
             raise Exception("Invalid configuration parameter")
 

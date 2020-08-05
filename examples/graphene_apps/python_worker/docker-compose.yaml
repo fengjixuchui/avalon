@@ -29,12 +29,13 @@ services:
       - 7777
     # Need to pass full path of file to python interpreter
     # Pass ZMQ URL to listen for requests. Bind to all available interfaces.
-    command: /usr/local/bin/wo-processor --bind "tcp://*:7777"
+    # Pass JSON file which has the workload module details.
+    command: /usr/local/bin/wo-processor --bind "tcp://*:7777" --workload "workloads.json"
     stop_signal: SIGKILL
 
 
-  send-work-order:
-    container_name: send-work-order
+  test-send-work-order:
+    container_name: test-send-work-order
     image: avalon-python-worker-dev
     environment:
       - http_proxy
@@ -44,7 +45,7 @@ services:
       - 7777
     command: |
       bash -c "
-         python ./avalon_worker/tests/test_send_work_order.py ./avalon_worker/tests/test_work_orders.json
+         python ./tests/test_send_work_order.py ./tests/test_work_orders.json
       "
     stop_signal: SIGKILL
     depends_on:

@@ -34,13 +34,13 @@ https://creativecommons.org/licenses/by/4.0/
 
   `docker-compose up` 
 
-  Above command will run test work orders listed in file [*test_work_orders.json*](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/avalon_worker/tests/test_work_orders.json).
+  Above command will run test work orders listed in file [*test_work_orders.json*](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/tests/test_work_orders.json).
 
 ### Test python worker using Avalon
 
 - To run python worker with Avalon Graphene Enclave Manager, go to Avalon repository top level directory and execute the following command:
 
-  `docker-compose -f docker-compose.yaml -f docker-compose-graphene.yaml up`
+  `docker-compose -f docker-compose.yaml -f docker/compose/avalon-graphene.yaml up`
 
 - To send work orders to python worker we can use [generic client](https://github.com/hyperledger/avalon/tree/master/examples/apps/generic_client) application. Execute following commands:
 
@@ -81,13 +81,13 @@ https://creativecommons.org/licenses/by/4.0/
 
      *# Avalon Python worker uses below configuration*.
 
-     *Distro: "ubuntu18.04"*
-     *Graphene:*
-         *Repository:* *"https://github.com/oscarlab/graphene.git"*
-         *Branch: "master"*
-     *SGXDriver:*
-         *Repository: "https://github.com/01org/linux-sgx-driver.git"*
-         *Branch: "sgx_driver_2.6"*
+     *Distro: "ubuntu18.04"*  
+     *Graphene:*  
+         *Repository:* *"https://github.com/oscarlab/graphene.git"*  
+         *Branch: "master"*  
+     *SGXDriver:*  
+         *Repository: "https://github.com/01org/linux-sgx-driver.git"*  
+         *Branch: "sgx_driver_2.6"*  
 
   2. Copy the Graphene python worker GSC build script file *build_gsc_python_worker.sh* from this [location](https://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/graphene) to <graphene_repo>/Tools/gsc using following command :
 
@@ -109,7 +109,7 @@ https://creativecommons.org/licenses/by/4.0/
 
   `docker-compose -f docker-compose.yaml -f docker-compose-graphene-sgx.yaml up`
 
-  Above command will run test work orders listed in file [*test_work_orders.json*](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/avalon_worker/tests/test_work_orders.json).
+  Above command will run test work orders listed in file [*test_work_orders.json*](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/tests/test_work_orders.json).
 
 ### Test python worker using Avalon
 
@@ -117,11 +117,11 @@ https://creativecommons.org/licenses/by/4.0/
 
   1. Start all the required containers in detached mode.
 
-     `docker-compose -f docker-compose.yaml -f docker-compose-graphene.yaml -f docker-compose-graphene-sgx.yaml up -d`
+     `docker-compose -f docker-compose.yaml -f docker/compose/avalon-graphene.yaml -f docker/compose/avalon-graphene-sgx.yaml up -d`
 
   2. Graphene-SGX Python worker will take around 3 minutes to get ready. Check the logs of graphene python worker using below command
 
-     `docker-compose -f docker-compose.yaml -f docker-compose-graphene.yaml  -f docker-compose-graphene-sgx.yaml logs -f graphene-python-worker`
+     `docker-compose -f docker-compose.yaml -f docker/compose/avalon-graphene.yaml -f docker/compose/avalon-graphene-sgx.yaml logs -f graphene-python-worker`
 
      If everything goes fine you should see following log in stdout
 
@@ -134,28 +134,28 @@ https://creativecommons.org/licenses/by/4.0/
 
   4. To restart the python worker you have to first bring all the containers down before bringing it up again. This is to ensure that python worker generate new keys and Avalon Graphene Enclave Manager gets the updated sign up information from python worker.
 
-     `docker-compose -f docker-compose.yaml -f docker-compose-graphene.yaml -f docker-compose-graphene-sgx.yaml down`
+     `docker-compose -f docker-compose.yaml -f docker/compose/avalon-graphene.yaml -f docker/compose/avalon-graphene-sgx.yaml down`
 
 ## Adding a new Python Workload
 
 - Avalon Python worker supports two sample workloads: "python-hello" and "python-fib".
 
-- List of sample workloads are listed in *workloads.json* file in [python_worker](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker) directory.
+- List of sample workloads are listed in *workloads.json* file kept in [python_worker](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker) directory.
 
   *{*
       *"python-hello": {*
-          *"module": "avalon_worker.workload.hello",*
+          *"module": "sample_workloads.workload.hello",*
           *"class": "HelloWorkLoad"*
       *},*
       *"python-fib": {*
-          *"module": "avalon_worker.workload.fibonacci",*
+          *"module": "sample_workloads.workload.fibonacci",*
           *"class": "FibonacciWorkLoad"*
       *}*
   *}*
 
-- Python workload code is kept in [workload](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/avalon_worker/workload) directory.
+- Python sample workloads are is kept in [sample_workloads](http://github.com/hyperledger/avalon/tree/master/examples/graphene_apps/python_worker/sample_workloads) directory.
 
-- To add a new python workload, keep the python workload implementation class in workload directory and also edit the *workloads.json* file to add new workload. The format of workload in *workloads.json* file is as shown below :
+- To add a new python workload, keep the python workload implementation class in sample workloads directory and also edit the *workloads.json* file to add new workload. The format of workload in *workloads.json* file is as shown below :
 
   *"workload-id": {*
           *"module": "<workload python module>",*

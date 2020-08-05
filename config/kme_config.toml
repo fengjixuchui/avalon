@@ -48,6 +48,10 @@ num_of_enclaves = "1"
 # the WPE enclave has been built.
 wpe_mrenclave_read_from_file = "wpe_mr_enclave.txt"
 
+# Sealed data from trusted enclave is stored at this location for recovery
+# in case of abrubt shutdown.
+sealed_data_path = ".sealed/.sealed.data"
+
 [KMEListener]
 # URL of KMEListener where a Work order processor can send requests meant for
 # the Key Management Enclave(KME). This config can be overridden by passing a
@@ -80,9 +84,11 @@ WorkOrderInvocationAddress = ""
 ReceiptInvocationAddress = ""
 # Ethereum Address used by the worker to submit transactions
 FromAddress = ""
-# Replace ApplicationTypeId and OrganizationId with real hexadecimal values
-ApplicationTypeId = "11aa22bb33cc44dd"
-OrganizationId = "aabbcc1234ddeeff"
+# Replace ApplicationTypeId and OrganizationId with real hexadecimal values, 64 characters
+# longs. As per EEA spec v1.1, they are bytes32 which effectively is 64 hex characters.
+ApplicationTypeId = "11aa22bb33cc44dd11aa22bb33cc44dd11aa22bb33cc44dd11aa22bb33cc44dd"
+OrganizationId = "aabbcc1234ddeeffaabbcc1234ddeeffaabbcc1234ddeeffaabbcc1234ddeeff"
+
 
 # URI used by worker to process work order receipts
 ReceiptInvocationUri = ""

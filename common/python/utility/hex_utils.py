@@ -14,9 +14,14 @@
 
 import binascii
 import hashlib
+import logging
+import re
 
+logger = logging.getLogger(__name__)
 
 # Return list of binary hex ids as list of UTF strings
+
+
 def pretty_ids(ids):
     pretty_list = []
     for id in ids:
@@ -29,6 +34,28 @@ def hex_to_utf8(binary):
     return binascii.hexlify(binary).decode("UTF-8")
 
 
+def hex_to_byte_array(hex_str):
+    """
+    Convert a hex string (i.e., a string of characters with values
+    between '0'-'9', 'A'-'F') to an array of bytes
+
+    @param hex_str - hex string to be converted to bytearray
+    @returns - array of bytes on successful conversion, otherwise return None
+    """
+    try:
+        return bytearray(binascii.unhexlify(hex_str))
+    except binascii.Error as err:
+        logger.error(
+            "Caught exception while converting hex string to bytearray - %s",
+            err)
+        return None
+    except TypeError as err:
+        logger.error(
+            "Caught exception while converting hex string to bytearray - %s",
+            err)
+        return None
+
+
 def is_valid_hex_str(hex_str):
     """
     Function to check given string is valid hex string or not
@@ -39,8 +66,31 @@ def is_valid_hex_str(hex_str):
     try:
         int(hex_str, 16)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
+        # Throws TypeError for None else ValueError
         return False
+
+
+def is_valid_hex_of_length(hex_str, length=None):
+    """
+    Function to check whether a string is a valid hex of specific length
+
+    Parameter:
+        @param hex_str - Input string to check
+        @param length - Length of string; Default - None
+    Returns:
+        @returns True - If the string is valid
+                        False, otherwise
+    """
+    if length is None:
+        return is_valid_hex_str(hex_str)
+    if not str(length).isdigit():
+        logger.error("Non-negative integer expected as length.")
+        return False
+    pattern = re.compile("^(0[x|X])?[a-fA-F0-9]{"+str(length)+"}$")
+    if pattern.match(hex_str) is None:
+        return False
+    return True
 
 
 def mrenclave_hex_string(enclave_metadata_file):

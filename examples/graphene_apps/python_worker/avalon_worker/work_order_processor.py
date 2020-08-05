@@ -16,18 +16,19 @@
 import sys
 import logging
 import argparse
-import base64
 import random
 import string
 import json
 from hashlib import sha256
 import avalon_worker.receive_request as receive_request
-import avalon_worker.worker_encryption as worker_encryption
-import avalon_worker.worker_signing as worker_signing
-import avalon_worker.worker_hash as worker_hash
-import avalon_worker.workload_processor as workload_processor
+import avalon_worker.crypto.worker_encryption as worker_encryption
+import avalon_worker.crypto.worker_signing as worker_signing
+import avalon_worker.crypto.worker_hash as worker_hash
+import avalon_worker.workload.workload_processor as workload_processor
 from avalon_worker.error_code import WorkerError
 import avalon_worker.utility.jrpc_utility as jrpc_utility
+from avalon_worker.attestation.sgx_attestation_factory \
+    import SgxAttestationFactory
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -40,13 +41,22 @@ def main(args=None):
     """
     Graphene worker main function.
     """
-    # Create Process work order object.
-    wo_processor = WorkOrderProcessor()
     # Parse command line parameters.
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--bind', help='URI to listen for requests ', type=str)
+    parser.add_argument(
+        '--workload', help='JSON file which has workload module details',
+        type=str)
     (options, remainder) = parser.parse_known_args(args)
+    # Get the workload JSON file name passed in command line.
+    if options.workload:
+        workload_json_file = options.workload
+    else:
+        # Default file name.
+        workload_json_file = "workloads.json"
+    # Create work order processor object.
+    wo_processor = WorkOrderProcessor(workload_json_file)
     # Setup ZMQ channel to receive work order.
     if options.bind:
         zmq_bind_url = options.bind
@@ -67,23 +77,20 @@ class WorkOrderProcessor():
     """
 
 # -------------------------------------------------------------------------
-    # Class variables
 
-    # Graphene SGX TARGET INFO
-    GRAPHENE_SGX_TARGET_INFO_FILE = "/dev/attestation/my_target_info"
-    # Graphene SGX user report data
-    GRAPHENE_SGX_USER_REPORT_DATA_FILE = "/dev/attestation/user_report_data"
-    # Graphene SGX Quote file
-    GRAPHENE_SGX_QUOTE_FILE = "/dev/attestation/quote"
-
-# -------------------------------------------------------------------------
-
-    def __init__(self):
+    def __init__(self, workload_json_file):
         """
         Constructor to generate worker signing and encryption keys.
+
+        Parameters :
+            workloads_json_file: JSON file which has workload module details.
         """
+        self.workload_json_file = workload_json_file
         self._generate_worker_keys()
         self._generate_worker_signup()
+        # Create workload processor.
+        self.wl_processor = \
+            workload_processor.WorkLoadProcessor(self.workload_json_file)
 
 # -------------------------------------------------------------------------
 
@@ -119,6 +126,9 @@ class WorkOrderProcessor():
             self.worker_public_enc_key.decode("utf-8")
         signup_data_json["encryption_key_signature"] = \
             self.worker_public_enc_key_sign.hex()
+        # Create Graphene SGX Attestation instance.
+        self.sgx_attestation = \
+            SgxAttestationFactory().create(SgxAttestationFactory.GRAPHENE)
         signup_data_json["mrenclave"] = \
             self._get_mrenclave()
         signup_data_json["quote"] = \
@@ -233,12 +243,11 @@ class WorkOrderProcessor():
                                                   session_key,
                                                   session_key_iv)
         # Process workload
-        wl_processor = workload_processor.WorkLoadProcessor()
         workload_id_hex = input_json["params"]["workloadId"]
         workload_id = bytes.fromhex(workload_id_hex).decode("UTF-8")
         in_data_array = input_json["params"]["inData"]
-        result, out_data = wl_processor.execute_workload(workload_id,
-                                                         in_data_array)
+        result, out_data = self.wl_processor.execute_workload(workload_id,
+                                                              in_data_array)
         # Generate work order response
         if result is True:
             output_json = self._create_work_order_response(input_json,
@@ -344,57 +353,37 @@ class WorkOrderProcessor():
 
     def _get_mrenclave(self):
         """
-        Get mrenclave value of Graphene-SGX worker enclave.
+        Get SGX mrenclave value of worker enclave.
 
         Returns :
-            mrenclave value in case of Graphene-SGX worker as hex string.
+            mrenclave value of worker enclave as hex string.
             If Intel SGX environment is not present returns empty string.
         """
-        try:
-            # Read target info
-            target_info_file = \
-                WorkOrderProcessor.GRAPHENE_SGX_TARGET_INFO_FILE
-            with open(target_info_file, 'rb') as fd:
-                data = fd.read()
-                mrencalve = data[:32].hex()
-        except Exception:
-            logger.warn("Graphene-SGX Environment not setup."
-                        "Return empty mrencalve string.")
-            mrencalve = ""
-        return mrencalve
+        mrenclave = self.sgx_attestation.get_mrenclave()
+        return mrenclave
 
 # -------------------------------------------------------------------------
 
     def _get_quote(self):
         """
-        Get quote of Graphene-SGX worker enclave.
+        Get SGX quote of worker enclave.
 
         Returns :
-            quote value in case of Graphene-SGX worker as hex string.
+            SGX quote value of worker enclave as base64 encoded string.
             If Intel SGX environment is not present returns empty string.
         """
-        try:
-            # Write user report data
-            user_report_data_file = \
-                WorkOrderProcessor.GRAPHENE_SGX_USER_REPORT_DATA_FILE
-            with open(user_report_data_file, 'wb') as file:
-                # First 32 bytes of report data has SHA256 hash of worker's
-                # public signing key. Next 32 bytes is filled with Zero.
-                hash_pub_key = sha256(self.worker_public_sign_key).digest()
-                user_data = hash_pub_key + bytearray(32)
-                file.write(user_data)
-                logger.debug("user_data hex = {}".format(user_data.hex()))
-            # Read quote
-            quote_file = WorkOrderProcessor.GRAPHENE_SGX_QUOTE_FILE
-            with open(quote_file, 'rb') as fd:
-                data = fd.read()
-                logger.debug("quote hex = {}".format(data.hex()))
-                quote = base64.b64encode(data)
-                quote_str = quote.decode("UTF-8")
-        except Exception:
-            logger.warn("Graphene-SGX Environment not setup."
-                        "Return empty quote string.")
+        # Write user report data.
+        # First 32 bytes of report data has SHA256 hash of worker's
+        # public signing key. Next 32 bytes is filled with Zero.
+        hash_pub_key = sha256(self.worker_public_sign_key).digest()
+        user_data = hash_pub_key + bytearray(32)
+        ret = self.sgx_attestation.write_user_report_data(user_data)
+        # Get quote
+        if ret:
+            quote_str = self.sgx_attestation.get_quote()
+        else:
             quote_str = ""
+        # Return quote.
         return quote_str
 
 # -------------------------------------------------------------------------
