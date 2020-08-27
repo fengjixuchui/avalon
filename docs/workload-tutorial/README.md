@@ -145,7 +145,7 @@ will be created next in [Phase 2](#phase2).
   ```
 
 * To link the new workload library into the build, change below lines in
-  [$TCF_HOME/tc/sgx/trusted_worker_manager/enclave/CMakeWorkloads.txt](../../tc/sgx/trusted_worker_manager/enclave/singleton/CMakeLists.txt) :  
+  [$TCF_HOME/tc/sgx/trusted_worker_manager/enclave/CMakeWorkloads.txt](../../tc/sgx/trusted_worker_manager/enclave/CMakeWorkloads.txt) :  
 
   Add workload to supported workload list
   ```bash
@@ -156,12 +156,12 @@ will be created next in [Phase 2](#phase2).
     ENDMACRO()
   ```  
 
-  Replace `<workload_id>`  with `hello_world` as shown below:
+  Replace `<workload_id>`  with `hello-world` as shown below:
   ```bash
     MACRO(CREATE_SUPPORTED_WORKLOADS_LIST)
         ...
         ...
-        # LIST(SUPPORTED_WORKLOADS_LIST "hello_world")
+        # LIST(SUPPORTED_WORKLOADS_LIST "hello-world")
     ENDMACRO()
   ```  
 
@@ -183,11 +183,19 @@ will be created next in [Phase 2](#phase2).
     ENDMACRO()
   ```
 
-* Update the `WORKLOADS` build argument in docker-compose files if running a worker pool setup using dockers. The work order processing enclave (WPE) should be built with workloads the worker pool supports. After update, the argument should look like:
+* Update the `WORKLOADS` build argument in docker-compose files if running a
+  worker pool setup using Docker. The work order processing enclave (WPE)
+  should be built with workloads the worker pool supports. After updating,
+  the argument should look like:
   ```bash
   WORKLOADS=echo-result;heart-disease-eval;inside-out-eval;simple-wallet;hello-world
   ```
-  You could have any number (one or more) of workloads in this list. This is especially useful when multiple worker pools are running together and there is a workload isolation with each pool running different set of workloads. Refer [avalon-pool-combo.yaml](../../docker/compose/avalon-pool-combo.yaml) for mutiple pools.
+  You could have any number (one or more) of workloads in this list. This is
+  especially useful when multiple worker pools are running together and there
+  is a workload isolation with each pool running different set of workloads.
+  Refer to
+  [avalon-pool-combo.yaml](../../docker/compose/avalon-pool-combo.yaml)
+  for multiple pools.
 
 * Change to the top-level Avalon source repository directory, `$TCF_HOME`,
   and rebuild the framework (see [$TCF_HOME/BUILD.md](../../BUILD.md)).

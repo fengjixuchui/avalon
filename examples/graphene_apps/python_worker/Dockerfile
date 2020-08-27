@@ -10,6 +10,7 @@ RUN apt-get update \
     pkg-config \
     python3-dev \
     python3-pip \
+    python3-toml \
     gcc \
  && python3 -m pip install pyzmq pycryptodomex ecdsa\
  && apt-get clean 
@@ -20,13 +21,14 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 WORKDIR /home/pythonworker
 
 COPY . .
+COPY ./ov_workload/ov_workload_config.toml /home/pythonworker/ov_workload_config.toml
 
 RUN make && make install
 
 # GSC (Graphene Shielded Container) docker image build depends on child
 # application manifest files.
 # Python worker makes use of Python Cryptodomex which indirectly depends on
-# mutiple applications and manifest files has to be listed in GSC build.
+# multiple applications and manifest files has to be listed in GSC build.
 # gcc depends on collect2 and GSC build exits with below message.
 # "Command 'which collect2' returned non-zero exit status 1".
 # Add a temporary workaround to add collect2 to path.
