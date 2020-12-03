@@ -44,8 +44,7 @@ services:
       - 8888
     command: |
       bash -c "
-      ./test/test_send_request.py ov-inference test.png
-      "
+        ./test/test_send_request.py ov-inference test.png"
     stop_signal: SIGKILL
     depends_on:
       - ov-work-order

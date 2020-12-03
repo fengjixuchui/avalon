@@ -24,11 +24,13 @@ import sys
 import avalon_enclave_manager.sgx_work_order_request as work_order_request
 import avalon_enclave_manager.wpe.wpe_enclave as enclave
 import avalon_enclave_manager.wpe.wpe_enclave_info as enclave_info
+from utility.jrpc_utility import create_error_response
 from avalon_enclave_manager.base_enclave_manager import EnclaveManager
 from avalon_enclave_manager.wpe.wpe_requester import WPERequester
 from error_code.error_status import WorkOrderStatus
 from avalon_enclave_manager.work_order_processor_manager \
     import WOProcessorManager
+from avalon_enclave_manager.enclave_type import EnclaveType
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +61,7 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
         """
         # Instantiate enclaveinfo & initialize enclave in the process
         signup_data = enclave_info.WorkOrderProcessorEnclaveInfo(
-            self._config.get("EnclaveModule"))
+            self._config, EnclaveType.WPE)
         self._wpe_requester = WPERequester(self._config)
 
         signup_cpp_obj = enclave.SignupInfoWPE()
@@ -133,19 +135,33 @@ class WorkOrderProcessorEnclaveManager(WOProcessorManager):
                 logger.error("Failed to preprocess at WPE enclave manager.")
                 return pre_proc_output
 
-            wo_request = work_order_request.SgxWorkOrderRequest(
-                "WPE",
-                input_json_str,
-                pre_proc_output)
-            wo_response = wo_request.execute()
+            wo_response = self._send_wo_to_process(input_json_str,
+                                                   pre_proc_output)
         except Exception as e:
             logger.error("failed to execute work order; %s", str(e))
-            wo_response = dict()
-            wo_response["error"] = dict()
-            wo_response["error"]["code"] = WorkOrderStatus.FAILED
-            wo_response["error"]["message"] = str(e)
+            wo_response = create_error_response(WorkOrderStatus.FAILED,
+                                                random.randint(0, 100000),
+                                                str(e))
             logger.info("unknown enclave type response = %s", wo_response)
         return wo_response
+
+# -------------------------------------------------------------------------
+
+    def _send_wo_to_process(self, input_json_str, pre_proc_output):
+        """
+        Send work order request to be processed within enclave.
+
+        Parameters :
+            input_json_str - A JSON formatted str of the request to execute
+            pre_proc_output - Preprocessing outcome of the work-order request
+        Returns :
+            response - Response as received after work-order execution
+        """
+        wo_request = work_order_request.SgxWorkOrderRequest(
+            EnclaveType.WPE,
+            input_json_str,
+            pre_proc_output)
+        return wo_request.execute()
 
 # -------------------------------------------------------------------------
 

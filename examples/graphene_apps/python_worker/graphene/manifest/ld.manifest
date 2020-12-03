@@ -1,3 +1,0 @@
-sgx.enclave_size = 512M
-# Uses tmp directory
-sgx.allowed_files.tmp = file:/tmp

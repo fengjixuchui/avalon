@@ -25,8 +25,9 @@ from avalon_enclave_manager.base_enclave_manager import EnclaveManager
 from avalon_enclave_manager.work_order_processor_manager \
     import WOProcessorManager
 from avalon_enclave_manager.graphene.graphene_enclave_info \
-    import SignupGraphene
+    import GrapheneEnclaveInfo
 from utility.zmq_comm import ZmqCommunication
+from utility.jrpc_utility import get_request_json
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class GrapheneEnclaveManager(WOProcessorManager):
         self.zmq_socket = ZmqCommunication(graphene_zmq_url)
         self.zmq_socket.connect()
         super().__init__(config)
+        self._config = config
         self.proof_data_type = config.get("WorkerConfig")["ProofDataType"]
         self._identity = self._worker_id
 
@@ -89,11 +91,12 @@ class GrapheneEnclaveManager(WOProcessorManager):
                          worker quote, mrencalve.
                          In case of error return None.
         """
-        json_request = self._create_json_request("ProcessWorkerSignup", None)
+        json_request = get_request_json("ProcessWorkerSignup",
+                                        random.randint(0, 100000))
         try:
             # Send signup request to Graphene worker
             worker_signup = self.zmq_socket.send_request_zmq(
-                                            json.dumps(json_request))
+                json.dumps(json_request))
         except Exception as ex:
             logger.error("Exception while sending data over ZMQ:" + str(ex))
             return None
@@ -108,7 +111,7 @@ class GrapheneEnclaveManager(WOProcessorManager):
             logger.error("Exception during signup json creation:" + str(ex))
             return None
         # Create Signup Graphene object
-        signup_data = SignupGraphene(worker_signup_json)
+        signup_data = GrapheneEnclaveInfo(self._config, worker_signup_json)
         return signup_data
 
 # -------------------------------------------------------------------------
@@ -123,8 +126,9 @@ class GrapheneEnclaveManager(WOProcessorManager):
         Returns :
             JSON response received from Graphene worker.
         """
-        json_request = self._create_json_request("ProcessWorkOrder",
-                                                 input_json_str)
+        json_request = get_request_json("ProcessWorkOrder",
+                                        random.randint(0, 100000),
+                                        input_json_str)
         result = self.zmq_socket.send_request_zmq(json.dumps(json_request))
         if result is None:
             logger.error("Graphene work order execution error")
@@ -135,26 +139,6 @@ class GrapheneEnclaveManager(WOProcessorManager):
             logger.error("Error loading json execution result: " + str(ex))
             return None
         return json_response
-
-# -------------------------------------------------------------------------
-    # TODO: Move this function to common/python/utiity/jrpc_utility.py
-    def _create_json_request(self, method_name, params=None):
-        """
-        Creates JSON RPC request
-
-        Parameters :
-            method_name: JSON RPC method name
-            params: JSON RPC params
-        Returns :
-            JSON RPC request.
-        """
-        json_request = {}
-        json_request["jsonrpc"] = "2.0"
-        json_request["id"] = random.randint(0, 100000)
-        json_request["method"] = method_name
-        json_request["params"] = params
-
-        return json_request
 
 # -----------------------------------------------------------------
 

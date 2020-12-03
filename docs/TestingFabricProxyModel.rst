@@ -5,7 +5,7 @@ Testing Hyperledger Avalon Proxy Model with Hyperledger Fabric
 ==============================================================
 
 Hyperledger Fabric is an enterprise, private, permissioned blockchain network.
-To run Fabric with Hyperledger Avalon on a single machine (both Avalon and Fabric network are running on same machine.)
+To run Fabric with Hyperledger Avalon on a single machine (both Avalon and Fabric network running on same machine),
 follow these steps:
 
 1. Set the environment variable ``TCF_HOME`` to the Avalon root directory.
@@ -17,7 +17,7 @@ follow these steps:
 
 2. Install ``curl``, ``docker`` and ``docker-compose``.
    See `PREREQUISITES <../PREREQUISITES.md#docker>`_
-   for instructions for Docker.
+   for instructions on Docker.
 
 3. Proxy configuration (optional).
    If the host machine is behind any network firewall/proxy, you need to
@@ -28,7 +28,7 @@ follow these steps:
        http_proxy=<http-proxy-url>:<port>
        https_proxy=<https-proxy-url>:<port>
 
-   By default minifab creates 3 orderers, 2 peers with 2 organisations.
+   By default minifab creates 3 orderers, 2 peers with 2 organizations.
    The ``no_proxy`` for this setup is as follows (all on one line):
 
    .. code:: sh
@@ -38,7 +38,7 @@ follow these steps:
                 peer2.org0.example.com,peer1.org0.example.com
        export NO_PROXY=$no_proxy
 
-   If you modify the number of orderers, peers, or organisations,
+   If you modify the number of orderers, peers, or organizations,
    please update the ``no_proxy`` list accordingly.
 
 4. Start the Fabric network with 2 organizations, 4 peers and 3 orderers
@@ -49,30 +49,30 @@ follow these steps:
        cd $TCF_HOME
        ./scripts/start_fabric.sh -u
 
-   Starting Fabric Docker containers will take some time.
+   Starting Fabric docker containers will take some time.
    Once it is up and running, type
    ``docker ps``
    and check for Fabric Docker containers named
    ``peer-*``, ``orderer-*``, and ``dev-*``
 
-5. Start the Avalon Docker containers
+5. Start the Avalon docker containers
 
    .. code:: sh
 
-       docker-compose -f docker-compose.yaml -f docker/compose/avalon-fabric.yaml up -d --build
+       sudo docker-compose -f docker-compose.yaml -f docker/compose/avalon-fabric.yaml up -d --build
 
    To start a worker pool (with one Key Management Enclave and one Work order Processing Enclave):
 
    .. code:: sh
 
-       docker-compose -f docker-compose.yaml -f docker/compose/avalon-pool.yaml -f docker/compose/avalon-fabric.yaml up -d --build
+       sudo docker-compose -f docker-compose.yaml -f docker/compose/avalon-pool.yaml -f docker/compose/avalon-fabric.yaml up -d --build
 
    To run in Intel SGX hardware mode, use the corresponding docker compose file for singleton or worker pool mode (as specified in `BUILD.md <../BUILD.md>`_).
 
-   Once the Fabric containers are up and running we can start and stop Avalon
+   Once the Fabric containers are up and running, we can start and stop Avalon
    containers any number of times without restarting the Fabric containers.
    To save time, omit the ``--build`` parameter after running the first time
-   so it will not rebuild Avalon.
+   so you do not rebuild Avalon.
 
 6. Go to the ``avalon-shell`` container to run ``generic_client.py``:
 
@@ -93,51 +93,56 @@ follow these steps:
 
        ./scripts/start_fabric.sh -d
 
-Setup Hyperledger Avalon Fabric Proxy Model on multiple machine
+Setup Hyperledger Avalon Fabric Proxy Model on multiple machines
 ----------------------------------------------------------------
-Multinode Hyperledger Avalon fabric proxy model setup requires certain modifications to existing
-Docker files. For example to setup the fabric blockchain network on a separate machine and Avalon on a separate machine
+Multinode Hyperledger Avalon Fabric proxy model setup requires certain modifications to the existing
+docker files. For example to setup the Fabric blockchain network on a separate machine and Avalon on a separate machine
 requires below changes.
 
-1. On machine1(with ip address IP1) need to run the minifab if you are choose to setup fabric on single machine.
-   Or else if you chose the any customized way other than minifab to setup a fabric network on multiple nodes, then it is mandatory to deploy
-   the Avalon chaincodes which are located in (https://github.com/hyperledger/avalon/tree/master/sdk/avalon_sdk/connector/blockchains/fabric/chaincode)
+1. On machine1(with ip address IP1), you need to run the minifab if you choose to setup fabric on single machine.
+   Otherwise if you choose any customized way other than minifab to setup a fabric network on multiple nodes, then it is mandatory to deploy
+   the Avalon chaincodes which are located at https://github.com/hyperledger/avalon/tree/master/sdk/avalon_sdk/connector/blockchains/fabric/chaincode.
 
    .. code:: sh
+
         cd $TCF_HOME
         ./scripts/start_fabric.sh -e
 
-   start_fabric.sh with option -e exposes the ports to host machine and it generates the network profile with host ip in network config file.
+   start_fabric.sh with option -e exposes the ports to host machine and it generates the network profile with host ip in the network config file.
 
-2. On machine2 (with ip address IP2) where Avalon is going to setup, copy the crypto materials used to setup the fabric network to home directory.
-   Avalon shell and Avalon fabric connector need these crypto materials to interact with the blockchain.
+2. On machine2 (with ip address IP2) where Avalon is going to be setup, copy the crypto materials used to setup the Fabric network to home directory.
+   Avalon shell and Avalon Fabric connector need these crypto materials to interact with the blockchain.
 
    .. code:: sh
-        scp -r ~/mywork <user_name>@<IP1>:~/
 
-3. If you choose the customized setup other than the start_fabric.sh (minifab) then create the network.json as in (https://github.com/hyperledger/avalon/blob/master/sdk/avalon_sdk/connector/blockchains/fabric/network.json)
+        scp -r $TCF_HOME/mywork <user_name>@<IP1>:~/
 
-4. If these 2 matchines are behind the corporate network please update environment variables `no_proxy` and `NO_PROXY`
+3. If you choose a customized setup other than start_fabric.sh (minifab) then create the network.json as in https://github.com/hyperledger/avalon/blob/master/sdk/avalon_sdk/connector/blockchains/fabric/network.json
+
+4. If these 2 machines are in corporate network, please update environment variables `no_proxy` and `NO_PROXY`
    with the IP1 on machine2 as mentioned above.
 
-5. Remove the network tag from the Docker compose file - https://github.com/hyperledger/avalon/blob/master/docker/compose/avalon-fabric.yaml#L55
+5. Remove the network tag from the Docker compose file - https://github.com/hyperledger/avalon/blob/master/docker/compose/avalon-fabric.yaml#L62
 
 6. Start the Avalon components.
 
    .. code:: sh
+
         docker-compose -f docker-compose.yaml -f docker/compose/avalon-fabric.yaml up -d --build
 
    To start a worker pool (with one Key Management Enclave and one Work order Processing Enclave):
 
    .. code:: sh
+
         docker-compose -f docker-compose.yaml -f docker/compose/avalon-pool.yaml -f docker/compose/avalon-fabric.yaml up -d --build
 
    To run in Intel SGX hardware mode, use the corresponding Docker compose file for singleton or worker pool mode (as specified in BUILD.md).
 
-7. To test using fabric generic client.
+7. To test using Fabric generic client.
    Go to the avalon-shell container to run generic_client.py
 
    .. code:: sh
+
         docker exec -it  avalon-shell bash
         cd examples/apps/generic_client/
         ./generic_client.py -b fabric --workload_id "echo-result" --in_data "Hello" -o \
@@ -156,8 +161,8 @@ Troubleshooting
 
          ./scripts/start_fabric.sh -c
 
-     This runs ``~/mywork/minifab cleanup`` and
-     removes directory ``~/mywork/vars``
+     This runs ``$TCF_HOME/mywork/minifab cleanup`` and
+     removes directory ``$TCF_HOME/mywork/vars``
   2. Verify Fabric Docker service containers are down with ``docker ps -a``
   3. To remove containers that exited but are not removed, type:
 
@@ -166,7 +171,7 @@ Troubleshooting
          docker rm $(docker ps -aq -f status=exited)
 
   4. Remove the Fabric work directory and minifab:
-     ``rm -rf ~/mywork``
+     ``rm -rf $TCF_HOME/mywork``
   5. Optional. To remove the Avalon directory type:
      ``cd; rm -rf $TCF_HOME``
 
@@ -196,4 +201,4 @@ Troubleshooting
 
   Group ``docker`` should appear in the output.
   The Docker ``hello-world`` container should download, run without error,
-  and print the message ``Hello from Docker!``
+  and print the message ``Hello from Docker!``.

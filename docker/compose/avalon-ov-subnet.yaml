@@ -40,7 +40,7 @@ services:
     networks:
       - awov
 
-  graphene-python-worker:
+  graphene-python-workload:
     networks:
       - awov
 
